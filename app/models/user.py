@@ -24,6 +24,7 @@ class UserInDB(UserBase):
     updated_at: datetime
     last_login: Optional[datetime] = None
     active: bool = True
+    onboarding: bool = False
     role: str = "user"  # Valores posibles: "user", "admin"
     metadata: Dict[str, Any] = Field(default_factory=dict)
     
@@ -33,7 +34,9 @@ class UserResponse(BaseModel):
     id: str
     email: EmailStr
     name: Optional[str] = None
-    created_at: datetime
     role: str
-    
+    active: bool
+    onboarding: bool
+    created_at: datetime
+    last_login: Optional[datetime] = None
     model_config = {"from_attributes": True}

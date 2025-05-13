@@ -1,3 +1,7 @@
+# Personalized
+requirements2.txt
+.tohide/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

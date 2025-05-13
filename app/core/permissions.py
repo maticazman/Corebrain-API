@@ -39,7 +39,7 @@ def verify_permissions(
     """
     Verifica permisos y lanza una excepción si no son suficientes
     """
-    print("Entra al permisos")
+    print("Entra al permisos: ", api_key_level, required_permission, collection_name)
     # Verificar permisos generales
     if not check_api_key_permissions(api_key_level, required_permission):
         raise PermissionError(

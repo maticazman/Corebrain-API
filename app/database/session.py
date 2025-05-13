@@ -30,7 +30,7 @@ async def connect_to_mongodb():
         LogEntry("mongodb_connected", "info") \
             .add_data("database", settings.MONGODB.MONGODB_DB_NAME) \
             .log()
-            
+        print("db: ", db)
         return db
     
     except ConnectionFailure as e:
@@ -48,12 +48,16 @@ async def connect_to_mongodb():
 async def close_mongodb_connection():
     """Cierra la conexión a MongoDB"""
     global client
-    if client:
+    if client is not None:  # Also fixed here
         client.close()
         LogEntry("mongodb_disconnected", "info").log()
 
-def get_database():
-    """Obtiene la instancia de la base de datos"""
-    if not db:
-        raise RuntimeError("La conexión a MongoDB no está establecida")
+async def get_database():
+    """Obtiene la instancia de la base de datos de forma asíncrona"""
+    global db
+    if db is None:
+        # Intentar conectar si no está conectado
+        await connect_to_mongodb()
+        if db is None:
+            raise RuntimeError("La conexión a MongoDB no pudo establecerse")
     return db

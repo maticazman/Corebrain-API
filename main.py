@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from datetime import datetime
 
-from app.routers import auth, chat, database, analytics
+from app.routers import auth, chat, cli_token, database, analytics, public, api_keys
 from app.database import connect_to_mongodb, close_mongodb_connection
 from app.middleware import setup_middleware
 from app.core.config import settings
@@ -28,7 +28,8 @@ setup_middleware(app)
 # Configurar CORS explícitamente
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.SECURITY.CORS_ORIGINS,
+    #allow_origins=settings.SECURITY.CORS_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -36,9 +37,12 @@ app.add_middleware(
 
 # Registrar routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Autenticación"])
+app.include_router(cli_token.router, prefix="/api/auth", tags=["Token"])
+app.include_router(api_keys.router, prefix="/api/auth", tags=["Token"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(database.router, prefix="/api/database", tags=["Base de datos"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analíticas"])
+app.include_router(public.router, prefix="/api/public", tags=["Autenticación Pública"])
 
 # Eventos de inicio y apagado
 @app.on_event("startup")
@@ -123,7 +127,7 @@ app.openapi = custom_openapi
 async def root():
     """Endpoint raíz"""
     return {
-        "name": "CoreBrain API",
+        "name": "Corebrain API",
         "version": app.version,
         "status": "online"
     }
@@ -136,8 +140,8 @@ async def health_check():
 # Ejecutar la aplicación directamente si se llama al script
 if __name__ == "__main__":
     uvicorn.run(
-        "app.main:app",
+        "main:app",
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", 8000)),
+        port=int(os.environ.get("PORT", 5000)),
         reload=settings.DEBUG
     )

@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict, Any
 from app.database.repositories.base_repository import BaseRepository
 from app.models.user import UserInDB, UserUpdate
+from bson import ObjectId
 
 class UserRepository(BaseRepository[UserInDB]):
     """
@@ -14,7 +15,15 @@ class UserRepository(BaseRepository[UserInDB]):
         """
         Busca un usuario por su email
         """
-        return await self.find_one({"email": email})
+        user = await self.find_one({"email": email})
+        print("Retorna el user desde repository")
+        return user
+    
+    async def find_by_id(self, user_id: str) -> Optional[UserInDB]:
+        """
+        Busca un usuario por su ID
+        """
+        return await self.find_one({"id": user_id})
     
     async def find_active_users(self) -> List[UserInDB]:
         """

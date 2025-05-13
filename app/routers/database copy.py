@@ -110,6 +110,9 @@ async def process_sdk_query(
     Genera la consulta para la base de datos, la ejecuta utilizando la configuración
     del API key o el config_id proporcionado, y devuelve los resultados con su explicación.
     """
+    # Inicializar la variable api_key_data para evitar errores de referencia
+    api_key_data = None
+    
     try:
         # Primero obtener y validar la API key como objeto
         api_key_data = await auth_service.get_api_key_data(api_key)
@@ -176,13 +179,9 @@ async def process_sdk_query(
             except Exception as e:
                 logger.error(f"Error al obtener configuración por config_id: {str(e)}")
         
-        
-        
         # Fallback si no se encuentra ninguna configuración
         if not db_config:
             raise ValueError("No se pudo obtener una configuración de base de datos válida.")
-        
-        
         
         # Obtener la configuración de la base de datos
         api_key_data = await auth_service.get_api_key_data(api_key, False)
@@ -277,6 +276,9 @@ async def process_sdk_query(
                 
         elif db_type in ["nosql", "mongodb"]:
             # Para bases de datos MongoDB
+            # Inicializamos mongo_query como None al principio de esta rama
+            mongo_query = None
+            
             collection_name = query_data.get("collection_name")
             
             # Intentar determinar una colección por defecto si no se especificó
@@ -287,51 +289,99 @@ async def process_sdk_query(
                 elif isinstance(tables, list) and tables:
                     collection_name = tables[0].get("name")
             
-            # Generar consulta MongoDB
             try:
+                # Generar consulta MongoDB
                 mongo_query = await AIQuery.generate_mongodb_query(question, db_schema, collection_name)
                 
                 # Registrar consulta generada
                 LogEntry("mongo_query_generated", "info") \
                     .set_api_key_id(api_key.id) \
                     .add_data("question", question) \
-                    .add_data("collection", mongo_query.collection) \
+                    .add_data("collection", mongo_query.collection if hasattr(mongo_query, "collection") else "unknown") \
                     .log()
                 
-                # Ejecutar la consulta MongoDB
-                start_time = time.time()
-                result_data, _ = await AIQuery.execute_mongodb_query(mongo_query, db_config)
-                query_time_ms = (time.time() - start_time) * 1000
-                
-                # Crear objeto QueryResult para la explicación
-                query_result = QueryResult(
-                    data=result_data,
-                    count=len(result_data) if isinstance(result_data, list) else 1,
-                    query_time_ms=int(query_time_ms),
-                    has_more=False,
-                    metadata={
-                        "collection": mongo_query.collection,
-                        "config_id": config_id,
-                        "executed_by": "api"
-                    }
-                )
-                
-                # Preparar el objeto de consulta para devolverlo
+                # Preparar el objeto de consulta para devolverlo con manejo seguro
                 if hasattr(mongo_query, "model_dump"):
                     query_dict = mongo_query.model_dump()
                 elif hasattr(mongo_query, "dict"):
                     query_dict = mongo_query.dict()
                 else:
-                    # Fallback: crear diccionario manualmente
-                    query_dict = {
-                        "collection": mongo_query.collection,
-                        "operation": mongo_query.operation,
-                        "filter": mongo_query.filter,
-                        "projection": mongo_query.projection,
-                        "sort": mongo_query.sort,
-                        "limit": mongo_query.limit,
-                        "skip": mongo_query.skip
+                    # Si mongo_query es un diccionario o tiene atributos accesibles
+                    query_dict = {}
+                    
+                    # Intentar obtener colección
+                    if hasattr(mongo_query, "collection"):
+                        query_dict["collection"] = mongo_query.collection
+                    elif isinstance(mongo_query, dict) and "collection" in mongo_query:
+                        query_dict["collection"] = mongo_query["collection"]
+                    else:
+                        query_dict["collection"] = collection_name or "unknown"
+                    
+                    # Intentar obtener operación
+                    if hasattr(mongo_query, "operation"):
+                        query_dict["operation"] = mongo_query.operation
+                    elif isinstance(mongo_query, dict) and "operation" in mongo_query:
+                        query_dict["operation"] = mongo_query["operation"]
+                    else:
+                        query_dict["operation"] = "find"
+                    
+                    # Obtener filtro de manera segura
+                    filter_value = {}
+                    if hasattr(mongo_query, "filter"):
+                        filter_value = mongo_query.filter
+                    elif hasattr(mongo_query, "query"):
+                        filter_value = mongo_query.query
+                    elif isinstance(mongo_query, dict):
+                        if "filter" in mongo_query:
+                            filter_value = mongo_query["filter"]
+                        elif "query" in mongo_query:
+                            filter_value = mongo_query["query"]
+                    
+                    # Añadir filtro al diccionario
+                    query_dict["filter"] = filter_value
+                    
+                    # Añadir resto de atributos si existen
+                    for attr in ["projection", "sort", "limit", "skip", "pipeline"]:
+                        if hasattr(mongo_query, attr):
+                            attr_value = getattr(mongo_query, attr)
+                            if attr_value is not None:
+                                query_dict[attr] = attr_value
+                        elif isinstance(mongo_query, dict) and attr in mongo_query:
+                            query_dict[attr] = mongo_query[attr]
+                
+                # Ejecutar la consulta MongoDB con manejo seguro
+                start_time = time.time()
+                
+                # Intentar ejecutar la consulta
+                try:
+                    result_data, explanation_from_query = await AIQuery.execute_mongodb_query(mongo_query, db_config)
+                except Exception as exec_error:
+                    logger.error(f"Error ejecutando consulta MongoDB: {str(exec_error)}")
+                    # Si falla, intentar crear un diccionario simplificado y volver a intentar
+                    simplified_query = {
+                        "collection": query_dict.get("collection", collection_name or "users"),
+                        "operation": query_dict.get("operation", "find"),
+                        "filter": query_dict.get("filter", {}),
+                        "query": query_dict.get("filter", {}),
+                        "limit": query_dict.get("limit", 10)
                     }
+                    result_data, explanation_from_query = await AIQuery.execute_mongodb_query(simplified_query, db_config)
+                
+                query_time_ms = (time.time() - start_time) * 1000
+                
+                # Crear objeto QueryResult para la explicación
+                result_count = len(result_data) if isinstance(result_data, list) else 1
+                query_result = QueryResult(
+                    data=result_data,
+                    count=result_count,
+                    query_time_ms=int(query_time_ms),
+                    has_more=False,
+                    metadata={
+                        "collection": query_dict.get("collection", collection_name or "unknown"),
+                        "config_id": config_id,
+                        "executed_by": "api"
+                    }
+                )
                 
                 # Generar explicación con validación
                 try:
@@ -343,18 +393,26 @@ async def process_sdk_query(
                     
                     # Verificar que la explicación sea realmente texto y no un número/float
                     if not isinstance(explanation, str) or len(explanation) < 10:
-                        # Generar una explicación de fallback si no es un string válido
-                        explanation = generate_default_mongo_explanation(mongo_query, result_data)
+                        # Intentar usar la explicación de la ejecución de la consulta
+                        if explanation_from_query and isinstance(explanation_from_query, str) and len(explanation_from_query) > 10:
+                            explanation = explanation_from_query
+                        else:
+                            # Generar una explicación de fallback
+                            explanation = generate_default_mongo_explanation(mongo_query, result_data)
                 except Exception as exp_error:
                     logger.error(f"Error al generar explicación MongoDB: {str(exp_error)}")
-                    explanation = generate_default_mongo_explanation(mongo_query, result_data)
+                    # Intentar usar la explicación de la ejecución de la consulta
+                    if explanation_from_query and isinstance(explanation_from_query, str) and len(explanation_from_query) > 10:
+                        explanation = explanation_from_query
+                    else:
+                        explanation = generate_default_mongo_explanation(mongo_query, result_data)
                 
                 # Registrar ejecución exitosa
                 LogEntry("mongo_query_executed", "info") \
                     .set_api_key_id(api_key.id) \
                     .add_data("question", question) \
-                    .add_data("collection", mongo_query.collection) \
-                    .add_data("result_size", len(result_data) if isinstance(result_data, list) else 1) \
+                    .add_data("collection", query_dict.get("collection", "unknown")) \
+                    .add_data("result_size", result_count) \
                     .log()
                 
                 # Devolver los resultados de la consulta junto con una explicación
@@ -391,8 +449,10 @@ async def process_sdk_query(
             }
         
     except PermissionError as e:
+        api_key_id = api_key.id if hasattr(api_key, "id") else (api_key_data.id if api_key_data else "unknown")
+        
         LogEntry("permission_error", "error") \
-            .set_api_key_id(api_key.id) \
+            .set_api_key_id(api_key_id) \
             .add_data("error", str(e)) \
             .log()
             
@@ -402,8 +462,10 @@ async def process_sdk_query(
         )
     
     except ValueError as e:
+        api_key_id = api_key.id if hasattr(api_key, "id") else (api_key_data.id if api_key_data else "unknown")
+        
         LogEntry("value_error", "error") \
-            .set_api_key_id(api_key.id) \
+            .set_api_key_id(api_key_id) \
             .add_data("error", str(e)) \
             .log()
             
@@ -417,8 +479,10 @@ async def process_sdk_query(
         import traceback
         error_details = traceback.format_exc()
         
+        api_key_id = api_key.id if hasattr(api_key, "id") else (api_key_data.id if api_key_data else "unknown")
+        
         LogEntry("sdk_query_error", "error") \
-            .set_api_key_id(api_key.id) \
+            .set_api_key_id(api_key_id) \
             .add_data("error", str(e)) \
             .add_data("traceback", error_details) \
             .log()

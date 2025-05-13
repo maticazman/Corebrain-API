@@ -13,14 +13,37 @@ class ApiKeyRepository(BaseRepository[ApiKeyInDB]):
     
     async def find_key_by_id(self, id: str) -> Optional[ApiKeyInDB]:
         """
-        Busca una API key por su id
+        Busca una API key por su ID.
+        
+        Args:
+            id: ID de la API key
+            
+        Returns:
+            ApiKeyInDB o None
         """
+        if hasattr(id, 'id') and isinstance(getattr(id, 'id'), str):
+            id = getattr(id, 'id')
+
         return await self.find_one({"id": id})
     
-    async def find_by_key(self, key: str) -> Optional[ApiKeyInDB]:
+    async def find_by_key(self, key: Any) -> Optional[ApiKeyInDB]:
         """
-        Busca una API key por su valor
+        Busca una API key por su valor.
+        
+        Args:
+            key: Valor de la API key o objeto ApiKeyInDB
+            
+        Returns:
+            ApiKeyInDB o None si no se encuentra
         """
+        # Si key es un objeto con atributo 'key', extraer ese valor
+        if hasattr(key, 'key') and isinstance(getattr(key, 'key'), str):
+            key = getattr(key, 'key')
+        
+        # Verificar que ahora key sea un string
+        if not isinstance(key, str):
+            raise TypeError(f"Expected API key to be string, got {type(key)}")
+        
         return await self.find_one({"key": key})
     
     async def find_by_user_id(self, user_id: str, include_inactive: bool = False) -> List[ApiKeyInDB]:

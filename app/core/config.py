@@ -15,10 +15,23 @@ def get_cors_origins() -> List[str]:
 
 class SecuritySettings(BaseModel):
     SECRET_KEY: str = os.environ.get("SECRET_KEY", "insecure-secret-key-for-dev")
+    TOKEN_EXPIRATION_MINUTES: int = int(os.environ.get("TOKEN_EXPIRATION_MINUTES", "30"))
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     ALGORITHM: str = "HS256"
     API_KEY_NAME: str = "X-API-Key"
     CORS_ORIGINS: List[str] = Field(default_factory=get_cors_origins)
+
+class SSOSettings(BaseModel):
+    ENABLED: bool = Field(bool(os.getenv("SSO_ENABLED", "True")))
+    GLOBODAIN_SSO_URL: str = Field(os.getenv("GLOBODAIN_SSO_URL"))
+    GLOBODAIN_CLIENT_ID: str = Field(os.getenv("GLOBODAIN_CLIENT_ID"))
+    GLOBODAIN_CLIENT_SECRET: str = Field(os.getenv("GLOBODAIN_CLIENT_SECRET"))
+    GLOBODAIN_REDIRECT_URI: str = Field(os.getenv("GLOBODAIN_REDIRECT_URI"))
+    GLOBODAIN_SUCCESS_REDIRECT: str = Field(os.getenv("GLOBODAIN_SUCCESS_REDIRECT"))
+    
+    VALIDATION_URL: str = Field(os.getenv("SSO_VALIDATION_URL", "http://localhost:8000/api/auth/validate-token"))
+    CLIENT_ID: str = Field(os.getenv("SSO_CLIENT_ID", ""))
+    REDIRECT_URI: str = Field(os.getenv("SSO_REDIRECT_URI", ""))
 
 class MongoDBSettings(BaseModel):
     MONGODB_URL: str = os.environ.get("MONGODB_URL", "mongodb://localhost:27017")
@@ -29,8 +42,16 @@ class MongoDBSettings(BaseModel):
 
 class AnthropicSettings(BaseModel):
     ANTHROPIC_API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
-    ANTHROPIC_MODEL: str = os.environ.get("ANTHROPIC_MODEL", "claude-3-opus-20240229")
-    MAX_TOKENS: int = int(os.environ.get("MAX_TOKENS", "1024"))
+    # Cheapest models
+    ANTHROPIC_MODEL: str = os.environ.get("ANTHROPIC_MODEL", "claude-3-haiku-20240307")
+    # Tokens limit
+    MAX_TOKENS: int = int(os.environ.get("MAX_TOKENS", "512"))
+    TEMPERATURE: float = float(os.environ.get("TEMPERATURE", "0.7"))
+
+class OpenAISettings(BaseModel):
+    OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
+    OPENAI_MODEL: str = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+    MAX_TOKENS: int = int(os.environ.get("MAX_TOKENS", "512"))
     TEMPERATURE: float = float(os.environ.get("TEMPERATURE", "0.7"))
 
 class CacheSettings(BaseModel):
@@ -45,15 +66,18 @@ class RateLimitSettings(BaseModel):
 
 class Settings(BaseModel):
     # Meta
-    APP_NAME: str = "CoreBrain API"
+    APP_NAME: str = "Corebrain API"
+    APP_URL: str = os.environ.get("APP_URL", "http://localhost:8080")
     API_V1_STR: str = "/api"
     DEBUG: bool = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
     ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "development")
     
     # Componentes
     SECURITY: SecuritySettings = SecuritySettings()
+    SSO: SSOSettings = SSOSettings()
     MONGODB: MongoDBSettings = MongoDBSettings()
     ANTHROPIC: AnthropicSettings = AnthropicSettings()
+    OPENAI: OpenAISettings = OpenAISettings()
     CACHE: CacheSettings = CacheSettings()
     RATE_LIMIT: RateLimitSettings = RateLimitSettings()
     
@@ -70,6 +94,10 @@ class Settings(BaseModel):
         "write": ["products", "categories", "orders", "public_info"],
         "admin": ["*"]  # Acceso a todas las colecciones
     }
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
 
 # Crear instancia global de configuración
 settings = Settings()

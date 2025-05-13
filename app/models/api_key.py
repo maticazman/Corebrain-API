@@ -18,6 +18,8 @@ class ApiKeyUpdate(BaseModel):
     level: Optional[str] = None
     active: Optional[bool] = None
     expires_at: Optional[datetime] = None
+    last_used_at: Optional[datetime] = None
+    usage_count: Optional[int] = None
     allowed_domains: Optional[List[str]] = None
     metadata: Optional[Dict[str, Any]] = None
 
@@ -32,6 +34,7 @@ class ApiKeyInDB(ApiKeyBase):
     allowed_domains: List[str] = []
     last_used_at: Optional[datetime] = None
     usage_count: int = 0
+    status: Optional[str] = None
     metadata: Dict[str, Any] = {}
     
     model_config = {"from_attributes": True}

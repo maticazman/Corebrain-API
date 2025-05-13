@@ -52,7 +52,17 @@ async def create_user(user_data: UserCreate) -> UserInDB:
     
     return user_in_db
 
-async def authenticate_user(email: str, password: str) -> Optional[UserInDB]:
+async def get_user(user_id: str) -> Optional[UserInDB]:
+    """Obtiene un usuario por su ID"""
+    return await user_repo.find_by_id(user_id)
+
+async def get_user_by_email(user_email: str) -> Optional[UserInDB]:
+    """Obtiene un usuario por su email"""
+    user = await user_repo.find_by_email(user_email)
+    print("Retorna el user: ", user)
+    return user
+
+async def authenticate_user_with_password(email: str, password: str) -> Optional[UserInDB]:
     """Autentica un usuario por email y contraseña"""
     user = await user_repo.find_by_email(email)
     
@@ -75,7 +85,7 @@ async def authenticate_user(email: str, password: str) -> Optional[UserInDB]:
     
     # Actualizar último login
     user.last_login = datetime.now()
-    await user_repo.update(user.id, UserUpdate(last_login=user.last_login))
+    await user_repo.update("id", user.id, UserUpdate(last_login=user.last_login))
     
     # Registrar login exitoso
     LogEntry("login_success") \
@@ -84,6 +94,43 @@ async def authenticate_user(email: str, password: str) -> Optional[UserInDB]:
         .log()
     
     return user
+
+async def authenticate_user_decoding_access_token(token: str) -> Optional[UserInDB]:
+    """Autentica un usuario decodificando el token"""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECURITY.SECRET_KEY,
+            algorithms=[settings.SECURITY.ALGORITHM]
+        )
+        print("Payload del token del SSO: ", payload)
+        user_id = payload.get("sub")
+        if user_id is None:
+            return None
+        
+        user = await user_repo.find_by_id(user_id)
+        if not user or not user.active:
+            # Registrar intento fallido
+            LogEntry("login_failed", "warning") \
+                .add_data("reason", "user_not_found") \
+                .log()
+            return None
+        
+        # Actualizar último login
+        user.last_login = datetime.now()
+        await user_repo.update("id", user_id, UserUpdate(last_login=user.last_login))
+        
+        # Registrar login exitoso
+        LogEntry("login_success") \
+            .set_user_id(user.id) \
+            .add_data("email", user.email) \
+            .log()
+        
+        return user
+    except JWTError as e:
+        print("Error al decodificar el token: ", e)
+        return None
+    
 
 def create_jwt_token(user_id: str, expires_delta: Optional[timedelta] = None) -> Dict[str, str]:
     """
@@ -131,12 +178,12 @@ async def verify_token(token: str) -> Optional[UserInDB]:
     except JWTError:
         return None
 
-async def create_api_key(api_key_data: ApiKeyCreate) -> ApiKeyInDB:
+async def create_api_key(api_key_data: ApiKeyCreate, user_id: str = None) -> ApiKeyInDB:
     """Crea una nueva API key para un usuario"""
     # Verificar que el usuario existe
-    user = await user_repo.find_by_id(api_key_data.user_id)
+    user = await user_repo.find_by_id(user_id)
     if not user:
-        raise ValueError(f"Usuario con ID {api_key_data.user_id} no encontrado")
+        raise ValueError(f"Usuario con ID {user_id} no encontrado")
     
     # Generar API key
     api_key_id = str(uuid.uuid4())
@@ -148,12 +195,12 @@ async def create_api_key(api_key_data: ApiKeyCreate) -> ApiKeyInDB:
         key=api_key,
         name=api_key_data.name,
         level=api_key_data.level,
-        user_id=api_key_data.user_id,
+        user_id=user_id,
         created_at=datetime.now(),
         updated_at=datetime.now(),
-        expires_at=api_key_data.expires_at,
-        allowed_domains=api_key_data.allowed_domains or [],
-        metadata=api_key_data.metadata or {}
+        expires_at=api_key_data.expires_at if 'expires_at' in api_key_data else None,
+        allowed_domains=api_key_data.allowed_domains or [] if 'allowed_domains' in api_key_data else [],
+        metadata=api_key_data.metadata or {} if 'metadata' in api_key_data else {}
     )
     
     # Guardar en la base de datos
@@ -161,13 +208,27 @@ async def create_api_key(api_key_data: ApiKeyCreate) -> ApiKeyInDB:
     
     # Registrar creación
     LogEntry("api_key_created") \
-        .set_user_id(api_key_data.user_id) \
+        .set_user_id(user_id) \
         .set_api_key_id(api_key_id) \
         .add_data("name", api_key_data.name) \
         .add_data("level", api_key_data.level) \
         .log()
     
     return api_key_in_db
+
+async def update_api_key(api_key_id: str, api_key_data: ApiKeyUpdate) -> Optional[ApiKeyInDB]:
+    # Guardar en la base de datos
+    result = await api_key_repo.update("key", api_key_id, api_key_data)
+    print("Result: ", result)
+    
+    # Registrar actualización
+    LogEntry("api_key_updated") \
+        .set_api_key_id(api_key_id) \
+        .add_data("name", api_key_data.name if api_key_data.name else "unchanged") \
+        .add_data("level", api_key_data.level if api_key_data.level else "unchanged") \
+        .log()
+    
+    return result
 
 async def get_api_key_data(api_key: str, validate: bool = True) -> Optional[ApiKeyInDB]:
     """
@@ -181,9 +242,7 @@ async def get_api_key_data(api_key: str, validate: bool = True) -> Optional[ApiK
         ApiKeyInDB o None si no es válida
     """
     # Intentar obtener de caché primero
-    print("API kEY: ", api_key)
     cache_key = Cache.generate_key("api_key", api_key)
-    print("Cache api ky: ", cache_key)
     cached_data = Cache.get(cache_key)
     
     if cached_data:
@@ -197,8 +256,8 @@ async def get_api_key_data(api_key: str, validate: bool = True) -> Optional[ApiK
         if cached_data.get('last_used_at') and isinstance(cached_data['last_used_at'], str):
             cached_data['last_used_at'] = datetime.fromisoformat(cached_data['last_used_at'])
         
-        print("Va al APIKeyInDB con cached_data: ", cached_data)
-        return ApiKeyInDB(**cached_data)
+        apiKeyInDB = ApiKeyInDB(**cached_data)
+        return apiKeyInDB
     
     # Buscar en la base de datos
     print("Busca la db")
@@ -225,13 +284,17 @@ async def get_api_key_data(api_key: str, validate: bool = True) -> Optional[ApiK
         usage_count=api_key_data.usage_count + 1
     )
     print("Await api key repo")
-    await api_key_repo.update(api_key_data.id, update_data)
+    await api_key_repo.update("id", api_key_data.id, update_data)
     
-    # Guardar en caché
+    # Guardar en caché - Aquí está el cambio importante:
+    # Convertir el modelo Pydantic a diccionario antes de guardarlo
     print("Guarda en cache")
-    Cache.set(cache_key, api_key_data.model_dump(), ttl=300)  # 5 minutos
+    api_key_dict = api_key_data.model_dump() if hasattr(api_key_data, "model_dump") else api_key_data.dict()
+    Cache.set(cache_key, api_key_dict, ttl=300)  # 5 minutos
+    
     print("Return key data")
     return api_key_data
+
 
 async def validate_api_key(api_key: str) -> Optional[ApiKeyInDB]:
     """Valida si una API key es válida y devuelve sus datos"""
@@ -239,7 +302,7 @@ async def validate_api_key(api_key: str) -> Optional[ApiKeyInDB]:
     print("Va al api key return; ", api_key_data)
     return api_key_data
 
-async def revoke_api_key(api_key_id: str) -> bool:
+async def revoke_api_key(api_key_id: str, user_id: str = None) -> bool:
     """Revoca una API key estableciéndola como inactiva"""
     api_key = await api_key_repo.find_by_id(api_key_id)
     
@@ -248,7 +311,7 @@ async def revoke_api_key(api_key_id: str) -> bool:
     
     # Desactivar la API key
     update_data = ApiKeyUpdate(active=False)
-    await api_key_repo.update(api_key_id, update_data)
+    await api_key_repo.update("key", api_key_id, update_data)
     
     # Invalidar caché
     cache_key = Cache.generate_key("api_key", api_key.key)
@@ -256,7 +319,7 @@ async def revoke_api_key(api_key_id: str) -> bool:
     
     # Registrar revocación
     LogEntry("api_key_revoked") \
-        .set_user_id(api_key.user_id) \
+        .set_user_id(user_id) \
         .set_api_key_id(api_key_id) \
         .add_data("name", api_key.name) \
         .log()
@@ -285,7 +348,12 @@ async def is_domain_allowed(api_key_data: ApiKeyInDB, domain: str) -> bool:
 
 async def get_user_api_keys(user_id: str, include_inactive: bool = False) -> List[ApiKeyInDB]:
     """Obtiene todas las API keys de un usuario"""
+    print("Entra en el get_user_api_keys: ", user_id)
     return await api_key_repo.find_by_user_id(user_id, include_inactive)
+
+async def get_api_key(api_key: str) -> dict:
+    """Get a specific API key by its value"""
+    return await api_key_repo.find_by_key(api_key)
 
 async def get_user_by_id(user_id: str) -> Optional[UserInDB]:
     """Obtiene un usuario por su ID"""
@@ -304,7 +372,7 @@ async def update_user(user_id: str, user_data: UserUpdate) -> Optional[UserInDB]
         user_data.password = None  # Eliminar contraseña en texto plano
     
     # Actualizar usuario
-    updated_user = await user_repo.update(user_id, user_data)
+    updated_user = await user_repo.update("id", user_id, user_data)
     
     # Registrar actualización
     LogEntry("user_updated") \
@@ -322,9 +390,9 @@ async def deactivate_user(user_id: str) -> bool:
     
     # Actualizar usuario
     update_data = UserUpdate(active=False)
-    await user_repo.update(user_id, update_data)
+    await user_repo.update("id", user_id, update_data)
     
-    # Revocar todas las API keys del usuario
+    # Revocar todas las API keys del usuario    
     api_keys = await api_key_repo.find_by_user_id(user_id, include_inactive=True)
     for api_key in api_keys:
         if api_key.active:
@@ -355,7 +423,7 @@ async def change_user_password(user_id: str, current_password: str, new_password
     
     # Actualizar contraseña
     update_data = UserUpdate(hashed_password=get_password_hash(new_password))
-    await user_repo.update(user_id, update_data)
+    await user_repo.update("id", user_id, update_data)
     
     # Registrar cambio
     LogEntry("password_changed") \
