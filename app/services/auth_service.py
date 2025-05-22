@@ -27,7 +27,7 @@ async def create_user(user_data: UserCreate) -> UserInDB:
     # Verificar si el email ya existe
     existing_user = await user_repo.find_by_email(user_data.email)
     if existing_user:
-        raise ValueError(f"El email {user_data.email} ya está registrado")
+        raise ValueError(f"The email {user_data.email} is already registered")
     
     # Crear usuario
     user_id = str(uuid.uuid4())

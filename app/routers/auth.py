@@ -330,7 +330,7 @@ async def create_user(user_data: UserCreate):
                 level="write"
             )
             print("Create api key: ", api_key_data)
-            api_key = await auth_service.create_api_key(api_key_data)
+            api_key = await auth_service.create_api_key(api_key_data, user.id)
             print("api_key: ", api_key)
             
             print("\n=== ACCESO CREADO EXITOSAMENTE ===")

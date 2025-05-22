@@ -27,6 +27,7 @@ pip install requests
 pip install pymongo
 pip install python-multipart
 pip install langdetect
+pip install bcrypt
 
 echo "✅ Installation completed!"
 echo "================================================"
@@ -45,6 +46,7 @@ echo "  11. requests       - HTTP client"
 echo "  12. pymongo        - Sync MongoDB driver"
 echo "  13. python-multipart - Form handling"
 echo "  14. langdetect     - Language detection"
+echo "  15. bcrypt     - Encryption"
 echo ""
 echo "📝 Library descriptions:"
 echo "   • uvicorn: ASGI server for running FastAPI applications"
@@ -61,5 +63,6 @@ echo "   • requests: Simple HTTP library for Python"
 echo "   • pymongo: Synchronous MongoDB driver for Python"
 echo "   • python-multipart: Handle multipart/form-data requests"
 echo "   • langdetect: Language detection library"
+echo "   • bcrypt: Encryption library"
 echo ""
 echo "🎉 Ready to start developing!"
