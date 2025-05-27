@@ -1,57 +1,57 @@
-# Visión general de la arquitectura
-
-CoreBrain utiliza una arquitectura modular y escalable diseñada para procesar consultas en lenguaje natural, interactuar con bases de datos MongoDB y proporcionar respuestas contextuales utilizando modelos de lenguaje avanzados.
-
-## Arquitectura general
-
-![Arquitectura de CoreBrain](../assets/images/architecture-overview.png)
-
-El sistema está dividido en tres componentes principales:
-
-1. **api.corebrain.ai**: El backend basado en FastAPI que procesa las solicitudes, gestiona la autenticación y se comunica con servicios externos.
-2. **dashboard.corebrain.ai**: La interfaz de administración para que los usuarios gestionen su cuenta, API keys y analíticas.
-3. **sdk.corebrain.ai**: El SDK que permite a los desarrolladores integrar fácilmente CoreBrain en sus aplicaciones.
-
-## Flujo de datos
-
-1. La aplicación cliente envía una solicitud a través del SDK de CoreBrain.
-2. El SDK formatea la solicitud y la envía a la API.
-3. La API autentica la solicitud y verifica los permisos.
-4. Si la solicitud implica una consulta a la base de datos, se procesa a través del motor de procesamiento natural a MongoDB.
-5. El resultado se combina con el contexto de la conversación y se envía al modelo de lenguaje (Claude).
-6. La respuesta del modelo se procesa y se devuelve al cliente.
-
-## Componentes tecnológicos
-
+# Architecture Overview
+ 
+CoreBrain uses a modular and scalable architecture designed to process natural language queries, interact with MongoDB databases, and provide contextual responses using advanced language models.
+ 
+## General Architecture
+ 
+![CoreBrain Architecture](../assets/images/architecture-overview.png)
+ 
+The system is divided into three main components:
+ 
+1. **api.corebrain.ai**: The FastAPI-based backend that handles requests, manages authentication, and communicates with external services.
+2. **dashboard.corebrain.ai**: The admin interface for users to manage their account, API keys, and analytics.
+3. **sdk.corebrain.ai**: The SDK that allows developers to easily integrate CoreBrain into their applications.
+ 
+## Data Flow
+ 
+1. The client application sends a request through the CoreBrain SDK.
+2. The SDK formats the request and sends it to the API.
+3. The API authenticates the request and checks permissions.
+4. If the request involves a database query, it is processed through the natural-language-to-MongoDB engine.
+5. The result is combined with the conversation context and sent to the language model (Claude).
+6. The model’s response is processed and returned to the client.
+ 
+## Technology Components
+ 
 ### Backend (API)
-
-- **FastAPI**: Framework web rápido para construir APIs con Python 3.7+
-- **Motor/PyMongo**: Cliente asincrónico de MongoDB para Python
-- **Anthropic SDK**: Cliente oficial para interactuar con la API de Claude
-- **Redis**: Para caché y limitación de tasa
-- **Pydantic**: Validación de datos y configuración
-
+ 
+- **FastAPI**: High-performance web framework for building APIs with Python 3.7+
+- **Motor/PyMongo**: Asynchronous MongoDB client for Python
+- **Anthropic SDK**: Official client to interact with the Claude API
+- **Redis**: For caching and rate limiting
+- **Pydantic**: Data validation and settings management
+ 
 ### Frontend (Dashboard)
-
-- **React/Next.js**: Framework de frontend para la interfaz de usuario
-- **TypeScript**: Tipado estático para mejorar la calidad del código
-- **TailwindCSS**: Framework CSS para el diseño
-- **React Query**: Gestión de estado del lado del servidor
-- **Recharts**: Biblioteca para visualización de datos
-
+ 
+- **React/Next.js**: Frontend framework for the user interface
+- **TypeScript**: Static typing to improve code quality
+- **TailwindCSS**: CSS framework for styling
+- **React Query**: Server-state management
+- **Recharts**: Charting library for data visualization
+ 
 ### SDK
-
-- **JavaScript/TypeScript**: SDK principal para aplicaciones web
-- **Python**: SDK para aplicaciones backend y análisis de datos
-- **Node.js**: SDK para aplicaciones servidor
-
-## Seguridad
-
-CoreBrain implementa varias capas de seguridad:
-
-- **API Keys con niveles de permiso**: Cada API key tiene un nivel específico de acceso (read, write, admin).
-- **Sanitización de consultas**: Todas las consultas MongoDB son sanitizadas para prevenir inyecciones.
-- **Control de acceso a colecciones**: Las API keys solo pueden acceder a colecciones específicas.
-- **Rate limiting**: Limitación de solicitudes para prevenir abusos.
-- **Encriptación en tránsito**: Todas las comunicaciones utilizan HTTPS/TLS.
-- **Logging extensivo**: Registro detallado de todas las operaciones para auditoría.
+ 
+- **JavaScript/TypeScript**: Main SDK for web applications
+- **Python**: SDK for backend applications and data analysis
+- **Node.js**: SDK for server-side applications
+ 
+## Security
+ 
+CoreBrain implements multiple layers of security:
+ 
+- **API Keys with permission levels**: Each API key has a specific access level (read, write, admin).
+- **Query sanitization**: All MongoDB queries are sanitized to prevent injections.
+- **Collection access control**: API keys can only access specific collections.
+- **Rate limiting**: Request limiting to prevent abuse.
+- **Encryption in transit**: All communications use HTTPS/TLS.
+- **Extensive logging**: Detailed logs of all operations for auditing purposes.

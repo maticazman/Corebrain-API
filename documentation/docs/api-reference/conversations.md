@@ -1,26 +1,25 @@
 
-# Conversaciones
+# Conversations
 
-Las conversaciones son hilos de mensajes entre el usuario y la IA. Cada conversación tiene un identificador único y puede contener múltiples mensajes.
+Conversations are threads of messages between the user and the AI. Each conversation has a unique identifier and can contain multiple messages.
 
 ## Endpoints
 
-### Crear conversación
-
+### Create conversation
 ```
 POST /api/chat/conversations
 ```
 
-**Encabezados:**
+**Headers:**
 ```
 X-API-Key: tu_api_key_aquí
 Content-Type: application/json
 ```
 
-**Cuerpo:**
+**Body:**
 ```json
 {
-  "title": "Análisis de ventas",
+  "title": "Sales Analysis",
   "metadata": {
     "source": "app_mobile",
     "user_reference": "user_12345"
@@ -28,11 +27,11 @@ Content-Type: application/json
 }
 ```
 
-**Respuesta exitosa (201):**
+**Successful response (201):**
 ```json
 {
   "id": "conv_123456789",
-  "title": "Análisis de ventas",
+  "title": "Sales Analysis",
   "created_at": "2025-03-23T12:34:56Z",
   "updated_at": "2025-03-23T12:34:56Z",
   "last_message_at": null,
@@ -40,25 +39,25 @@ Content-Type: application/json
 }
 ```
 
-### Obtener conversación
+### Get conversation
 
 ```
 GET /api/chat/conversations/{conversation_id}
 ```
 
-**Parámetros de consulta:**
-- `messages_limit` - Cantidad máxima de mensajes a retornar (defecto: 10)
+**Query parameters:**
+- `messages_limit` - Maximum number of messages to return (default: 10)
 
-**Encabezados:**
+**Headers:**
 ```
 X-API-Key: tu_api_key_aquí
 ```
 
-**Respuesta exitosa (200):**
+**Successful response (200):**
 ```json
 {
   "id": "conv_123456789",
-  "title": "Análisis de ventas",
+  "title": "Sales Analysis",
   "created_at": "2025-03-23T12:34:56Z",
   "updated_at": "2025-03-23T12:34:56Z",
   "last_message_at": "2025-03-23T12:35:30Z",
@@ -66,14 +65,14 @@ X-API-Key: tu_api_key_aquí
   "messages": [
     {
       "id": "msg_123456789",
-      "content": "¿Cuántas ventas tuvimos el mes pasado?",
+      "content": "How many sales did we have last month?",
       "is_user": true,
       "created_at": "2025-03-23T12:35:00Z",
       "metadata": {}
     },
     {
       "id": "msg_987654321",
-      "content": "El mes pasado tuvieron un total de 1,254 ventas por un valor total de $45,678.",
+      "content": "Last month you had a total of 1,254 sales amounting to $45,678.",
       "is_user": false,
       "created_at": "2025-03-23T12:35:30Z",
       "metadata": {
@@ -88,28 +87,28 @@ X-API-Key: tu_api_key_aquí
 }
 ```
 
-### Listar conversaciones
+### List conversations
 
 ```
 GET /api/chat/conversations
 ```
 
-**Parámetros de consulta:**
-- `limit` - Cantidad máxima de conversaciones (defecto: 20)
-- `offset` - Desplazamiento para paginación (defecto: 0)
+**Query parameters:**
+- `limit` - Maximum number of conversations (default: 20)
+- `offset` - Offset for pagination (default: 0)
 
-**Encabezados:**
+**Headers:**
 ```
 X-API-Key: tu_api_key_aquí
 ```
 
-**Respuesta exitosa (200):**
+**Successful response (200):**
 ```json
 {
   "conversations": [
     {
       "id": "conv_123456789",
-      "title": "Análisis de ventas",
+      "title": "Sales Analysis",
       "created_at": "2025-03-23T12:34:56Z",
       "updated_at": "2025-03-23T12:35:30Z",
       "last_message_at": "2025-03-23T12:35:30Z",
@@ -117,7 +116,7 @@ X-API-Key: tu_api_key_aquí
     },
     {
       "id": "conv_987654321",
-      "title": "Soporte técnico",
+      "title": "Technical Support",
       "created_at": "2025-03-23T10:15:30Z",
       "updated_at": "2025-03-23T10:20:45Z",
       "last_message_at": "2025-03-23T10:20:45Z",
@@ -128,30 +127,30 @@ X-API-Key: tu_api_key_aquí
 }
 ```
 
-### Actualizar conversación
+### Update conversation
 
 ```
 PATCH /api/chat/conversations/{conversation_id}
 ```
 
-**Encabezados:**
+**Headers:**
 ```
 X-API-Key: tu_api_key_aquí
 Content-Type: application/json
 ```
 
-**Cuerpo:**
+**Body:**
 ```json
 {
-  "title": "Análisis de ventas Q1 2025"
+  "title": "Sales Analysis Q1 2025"
 }
 ```
 
-**Respuesta exitosa (200):**
+**Successful response (200):**
 ```json
 {
   "id": "conv_123456789",
-  "title": "Análisis de ventas Q1 2025",
+  "title": "Sales Analysis Q1 2025",
   "created_at": "2025-03-23T12:34:56Z",
   "updated_at": "2025-03-23T13:45:30Z",
   "last_message_at": "2025-03-23T12:35:30Z",
@@ -159,48 +158,48 @@ Content-Type: application/json
 }
 ```
 
-### Eliminar conversación
+### Delete conversation
 
 ```
 DELETE /api/chat/conversations/{conversation_id}
 ```
 
-**Encabezados:**
+**Headers:**
 ```
 X-API-Key: tu_api_key_aquí
 ```
 
-**Respuesta exitosa (200):**
+**Successful response (200):**
 ```json
 {
-  "message": "Conversación eliminada correctamente"
+  "message": "Conversation deleted successfully"
 }
 ```
 
 # docs/api-reference/messages.md
 
-# Mensajes
+# Messages
 
-Los mensajes son el componente principal de interacción con la IA. Un mensaje del usuario genera una respuesta de la IA utilizando el contexto de la conversación.
+Messages are the main interaction component with the AI. A user message generates a response from the AI using the conversation context.
 
 ## Endpoints
 
-### Enviar mensaje
+### Send message
 
 ```
 POST /api/chat/conversations/{conversation_id}/messages
 ```
 
-**Encabezados:**
+**Headers:**
 ```
 X-API-Key: tu_api_key_aquí
 Content-Type: application/json
 ```
 
-**Cuerpo:**
+**Body:**
 ```json
 {
-  "content": "¿Cuántos usuarios activos tuvimos la semana pasada?",
+  "content": "How many active users did we have last week?",
   "conversation_id": "conv_123456789",
   "metadata": {
     "source": "dashboard_analytics",
@@ -209,12 +208,12 @@ Content-Type: application/json
 }
 ```
 
-**Respuesta exitosa (200):**
+**Successful response (200):**
 ```json
 {
   "user_message": {
     "id": "msg_123456789",
-    "content": "¿Cuántos usuarios activos tuvimos la semana pasada?",
+    "content": "How many active users did we have last week?",
     "is_user": true,
     "created_at": "2025-03-23T14:15:30Z",
     "metadata": {
@@ -224,7 +223,7 @@ Content-Type: application/json
   },
   "ai_response": {
     "id": "msg_987654321",
-    "content": "La semana pasada tuvieron 2,543 usuarios activos, lo que representa un aumento del 15% con respecto a la semana anterior.",
+    "content": "Last week you had 2,543 active users, representing a 15% increase compared to the previous week.",
     "model": "claude-3-opus-20240229",
     "created_at": "2025-03-23T14:15:32Z",
     "tokens": {
@@ -246,28 +245,28 @@ Content-Type: application/json
 }
 ```
 
-### Obtener mensajes de una conversación
+### Get messages from a conversation
 
 ```
 GET /api/chat/conversations/{conversation_id}/messages
 ```
 
-**Parámetros de consulta:**
-- `limit` - Cantidad máxima de mensajes (defecto: 50)
-- `before` - ID del mensaje antes del cual obtener mensajes (para paginación)
+**Query parameters:**
+- `limit` -  Maximum number of messages (default: 50)
+- `before` - Message ID before which to get messages (for pagination)
 
-**Encabezados:**
+**Headers:**
 ```
 X-API-Key: tu_api_key_aquí
 ```
 
-**Respuesta exitosa (200):**
+**Successful response (200):**
 ```json
 {
   "messages": [
     {
       "id": "msg_123456789",
-      "content": "¿Cuántos usuarios activos tuvimos la semana pasada?",
+      "content": "How many active users did we have last week?",
       "is_user": true,
       "created_at": "2025-03-23T14:15:30Z",
       "metadata": {
@@ -276,7 +275,7 @@ X-API-Key: tu_api_key_aquí
     },
     {
       "id": "msg_987654321",
-      "content": "La semana pasada tuvieron 2,543 usuarios activos, lo que representa un aumento del 15% con respecto a la semana anterior.",
+      "content": "Last week you had 2,543 active users, representing a 15% increase compared to the previous week.",
       "is_user": false,
       "created_at": "2025-03-23T14:15:32Z",
       "metadata": {

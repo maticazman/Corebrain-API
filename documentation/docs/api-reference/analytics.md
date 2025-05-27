@@ -1,25 +1,25 @@
-# Analíticas
+## Analytics
 
-CoreBrain proporciona endpoints para obtener estadísticas de uso y rendimiento.
+CoreBrain provides endpoints to retrieve usage and performance statistics.
 
 ## Endpoints
 
-### Obtener estadísticas de uso
+### Get usage statistics
 
 ```
 GET /api/analytics/usage
 ```
 
-**Parámetros de consulta:**
-- `days` - Número de días a analizar (defecto: 30)
-- `group_by` - Agrupar por 'day', 'week' o 'month' (defecto: 'day')
+**Query parameters:**
+- `days` - Number of days to analyze (default: 30)
+- `group_by` - Group by 'day', 'week', or 'month' (default: 'day')
 
-**Encabezados:**
+**Headers:**
 ```
 X-API-Key: tu_api_key_aquí
 ```
 
-**Respuesta exitosa (200):**
+**Successful response (200):**
 ```json
 {
   "start_date": "2025-02-21T00:00:00Z",
@@ -46,22 +46,22 @@ X-API-Key: tu_api_key_aquí
 }
 ```
 
-### Obtener estadísticas de costos
+### Get cost statistics
 
 ```
 GET /api/analytics/costs
 ```
 
-**Parámetros de consulta:**
-- `days` - Número de días a analizar (defecto: 30)
-- `group_by` - Agrupar por 'day', 'week' o 'month' (defecto: 'day')
+**Query parameters:**
+- `days` - Number of days to analyze (default: 30)
+- `group_by` - Group by 'day', 'week', or 'month' (default: 'day')
 
-**Encabezados:**
+**Headers:**
 ```
 X-API-Key: tu_api_key_aquí
 ```
 
-**Respuesta exitosa (200):**
+**Successful response (200):**
 ```json
 {
   "start_date": "2025-02-21T00:00:00Z",
@@ -99,32 +99,32 @@ X-API-Key: tu_api_key_aquí
 }
 ```
 
-### Obtener consultas populares
+### Get top queries
 
 ```
 GET /api/analytics/top-queries
 ```
 
-**Parámetros de consulta:**
-- `limit` - Número máximo de consultas a retornar (defecto: 10)
-- `days` - Número de días a analizar (defecto: 7)
+**Query parameters:**
+- `limit` - Maximum number of queries to return (default: 10)
+- `days` - Number of days to analyze (default: 7)
 
-**Encabezados:**
+**Headers:**
 ```
 X-API-Key: tu_api_key_aquí
 ```
 
-**Respuesta exitosa (200):**
+**Successful response (200):**
 ```json
 [
   {
-    "query": "¿Cuáles son los productos más vendidos?",
+    "query": "What are the best-selling products?",
     "count": 45,
     "collections": ["products"],
     "last_used": "2025-03-23T10:15:30Z"
   },
   {
-    "query": "¿Quiénes son nuestros mejores clientes?",
+    "query": "Who are our best customers?",
     "count": 32,
     "collections": ["customers", "orders"],
     "last_used": "2025-03-22T15:45:12Z"
