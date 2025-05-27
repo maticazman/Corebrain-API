@@ -1,26 +1,25 @@
-
-# Base de datos
-
-CoreBrain permite ejecutar consultas en lenguaje natural sobre bases de datos MongoDB conectadas.
-
+# Database
+ 
+CoreBrain allows executing natural language queries over connected MongoDB databases.
+ 
 ## Endpoints
-
-### Consulta en lenguaje natural
-
+ 
+### Natural Language Query
+ 
 ```
 POST /api/database/query
 ```
-
-**Encabezados:**
+ 
+**Headers:**
 ```
-X-API-Key: tu_api_key_aquí
+X-API-Key: your_api_key_here  
 Content-Type: application/json
 ```
-
-**Cuerpo:**
+ 
+**Body:**
 ```json
 {
-  "query": "¿Cuáles son los 5 productos más vendidos este mes?",
+  "query": "What are the top 5 best-selling products this month?",
   "collection_name": "products",
   "limit": 5,
   "metadata": {
@@ -28,11 +27,11 @@ Content-Type: application/json
   }
 }
 ```
-
-**Respuesta exitosa (200):**
+ 
+**Successful Response (200):**
 ```json
 {
-  "natural_query": "¿Cuáles son los 5 productos más vendidos este mes?",
+  "natural_query": "What are the top 5 best-selling products this month?",
   "mongo_query": {
     "collection": "products",
     "operation": "find",
@@ -46,7 +45,7 @@ Content-Type: application/json
       {"_id": "prod_456", "name": "Smartphone X", "sales": 187},
       {"_id": "prod_789", "name": "Tablet Ultra", "sales": 145},
       {"_id": "prod_012", "name": "Monitor 4K", "sales": 98},
-      {"_id": "prod_345", "name": "Auriculares BT", "sales": 87}
+      {"_id": "prod_345", "name": "BT Headphones", "sales": 87}
     ],
     "count": 5,
     "query_time_ms": 25.4,
@@ -58,26 +57,26 @@ Content-Type: application/json
       "collection": "products"
     }
   },
-  "explanation": "Los 5 productos más vendidos este mes son Laptop Pro (256 unidades), Smartphone X (187 unidades), Tablet Ultra (145 unidades), Monitor 4K (98 unidades) y Auriculares BT (87 unidades). Estos datos representan el top 5 de un total de 120 productos en el catálogo.",
+  "explanation": "The top 5 best-selling products this month are Laptop Pro (256 units), Smartphone X (187 units), Tablet Ultra (145 units), Monitor 4K (98 units), and BT Headphones (87 units). These represent the top 5 out of a total of 120 products in the catalog.",
   "metadata": {
     "processing_time": 1.2,
     "anthropic_model": "claude-3-opus-20240229"
   }
 }
 ```
-
-### Obtener esquema de base de datos
-
+ 
+### Get Database Schema
+ 
 ```
 GET /api/database/collections
 ```
-
-**Encabezados:**
+ 
+**Headers:**
 ```
-X-API-Key: tu_api_key_aquí
+X-API-Key: your_api_key_here
 ```
-
-**Respuesta exitosa (200):**
+ 
+**Successful Response (200):**
 ```json
 {
   "collections": {

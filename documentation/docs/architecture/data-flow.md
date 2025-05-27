@@ -1,96 +1,96 @@
-# Flujo de datos
-
-Esta sección explica en detalle cómo fluyen los datos a través de los diferentes componentes de CoreBrain, desde la solicitud inicial hasta la respuesta final.
-
-## Procesamiento de mensajes
-
-![Flujo de procesamiento de mensajes](../assets/images/message-flow.png)
-
-### 1. Solicitud del cliente
-
-El flujo comienza cuando una aplicación cliente envía un mensaje utilizando el SDK de CoreBrain:
-
+# Data Flow
+ 
+This section explains in detail how data flows through the different components of CoreBrain, from the initial request to the final response.
+ 
+## Message Processing
+ 
+![Message Processing Flow](../assets/images/message-flow.png)
+ 
+### 1. Client Request
+ 
+The flow begins when a client application sends a message using the CoreBrain SDK:
+ 
 ```javascript
 const response = await client.messages.send({
   conversationId: "conv_123",
-  content: "¿Cuántos usuarios se registraron la semana pasada?"
+  content: "How many users signed up last week?"
 });
 ```
-
-### 2. Validación y autenticación
-
-Cuando la solicitud llega a la API:
-
-1. Se verifica la API key en el encabezado `X-API-Key`.
-2. Se comprueban los permisos para la operación solicitada.
-3. Se valida el formato y contenido de la solicitud.
-
-### 3. Procesamiento contextual
-
-El servicio de chat:
-
-1. Recupera la conversación especificada o crea una nueva.
-2. Obtiene el historial de mensajes previos para contexto.
-3. Guarda el mensaje del usuario en la base de datos.
-
-### 4. Análisis de la consulta
-
-El sistema determina si el mensaje requiere acceso a la base de datos:
-
-1. Analiza el contenido del mensaje buscando palabras clave.
-2. Si es necesario, recupera información sobre las colecciones disponibles.
-3. Prepara el contexto para el modelo de IA.
-
-### 5. Interacción con la IA
-
-El servicio de IA:
-
-1. Construye un prompt para Claude con el mensaje, historial y contexto de la base de datos.
-2. Envía la solicitud a la API de Anthropic.
-3. Claude genera una respuesta que puede incluir consultas MongoDB.
-
-### 6. Ejecución de consultas (si es necesario)
-
-Si Claude sugiere una consulta MongoDB:
-
-1. El sistema extrae la consulta de la respuesta.
-2. Sanitiza la consulta para prevenir operaciones maliciosas.
-3. Ejecuta la consulta contra la base de datos especificada.
-4. Formatea los resultados para enviarlos de vuelta a Claude.
-
-### 7. Generación de la respuesta final
-
-Con los resultados de la consulta:
-
-1. Se genera un nuevo prompt para Claude incluyendo los resultados.
-2. Claude interpreta los datos y genera una respuesta final.
-3. El sistema guarda la respuesta en la base de datos.
-4. Se calcula y registra el costo de la operación.
-
-### 8. Retorno al cliente
-
-Finalmente:
-
-1. La respuesta se formatea según la especificación de la API.
-2. Se envía de vuelta al cliente a través del SDK.
-3. Se actualizan las métricas y analíticas.
-
-## Flujo de tokens y costos
-
-![Flujo de tokens y costos](../assets/images/token-flow.png)
-
-Cada interacción con Claude consume tokens que tienen un costo asociado. CoreBrain realiza un seguimiento detallado de este consumo:
-
-1. Se cuentan los tokens de entrada (prompt) y salida (respuesta).
-2. Se calcula el costo en USD basado en las tarifas actuales de Anthropic.
-3. Los costos se almacenan asociados a la conversación.
-4. Se actualizan las métricas globales para facturación y analíticas.
-
-## Optimizaciones de rendimiento
-
-CoreBrain implementa varias optimizaciones para mejorar el rendimiento y reducir costos:
-
-1. **Caché**: Las respuestas frecuentes se almacenan en caché para evitar llamadas innecesarias a Claude.
-2. **Análisis previo**: El sistema analiza si un mensaje requiere acceso a la base de datos antes de consultar a Claude.
-3. **Limitación de contexto**: Solo se envía la información relevante a Claude para reducir el consumo de tokens.
-4. **Procesamiento en paralelo**: Las consultas a la base de datos se pueden ejecutar en paralelo cuando es posible.
+ 
+### 2. Validation and Authentication
+ 
+When the request reaches the API:
+ 
+1. The API key is verified in the `X-API-Key` header.
+2. Permissions for the requested operation are checked.
+3. The format and content of the request are validated.
+ 
+### 3. Contextual Processing
+ 
+The chat service:
+ 
+1. Retrieves the specified conversation or creates a new one.
+2. Loads the previous message history for context.
+3. Saves the user's message to the database.
+ 
+### 4. Query Analysis
+ 
+The system determines whether the message requires access to the database:
+ 
+1. Analyzes the content of the message for keywords.
+2. If needed, fetches metadata about the available collections.
+3. Prepares the context for the AI model.
+ 
+### 5. Interaction with the AI
+ 
+The AI service:
+ 
+1. Constructs a prompt for Claude with the message, history, and database context.
+2. Sends the request to the Anthropic API.
+3. Claude generates a response, which may include MongoDB queries.
+ 
+### 6. Query Execution (if needed)
+ 
+If Claude suggests a MongoDB query:
+ 
+1. The system extracts the query from the response.
+2. Sanitizes the query to prevent malicious operations.
+3. Executes the query against the specified database.
+4. Formats the results to send them back to Claude.
+ 
+### 7. Final Response Generation
+ 
+With the query results:
+ 
+1. A new prompt is generated for Claude including the results.
+2. Claude interprets the data and generates a final response.
+3. The system stores the response in the database.
+4. The cost of the operation is calculated and recorded.
+ 
+### 8. Return to the Client
+ 
+Finally:
+ 
+1. The response is formatted according to the API specification.
+2. It is sent back to the client through the SDK.
+3. Metrics and analytics are updated.
+ 
+## Token and Cost Flow
+ 
+![Token and Cost Flow](../assets/images/token-flow.png)
+ 
+Each interaction with Claude consumes tokens, which have an associated cost. CoreBrain tracks this consumption in detail:
+ 
+1. Counts input (prompt) and output (response) tokens.
+2. Calculates the cost in USD based on Anthropic’s current rates.
+3. Stores costs associated with the conversation.
+4. Updates global metrics for billing and analytics.
+ 
+## Performance Optimizations
+ 
+CoreBrain implements several optimizations to improve performance and reduce costs:
+ 
+1. **Caching**: Frequently asked responses are cached to avoid unnecessary calls to Claude.
+2. **Pre-analysis**: The system analyzes whether a message requires database access before querying Claude.
+3. **Context Limiting**: Only relevant information is sent to Claude to reduce token usage.
+4. **Parallel Processing**: Database queries can be executed in parallel when possible.
