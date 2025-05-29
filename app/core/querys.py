@@ -408,7 +408,40 @@ class AIQuery:
                         explanation += f" Se limitó la búsqueda a {mongo_query.limit} documentos."
                 
                 return result_serializable, explanation
+            elif mongo_query.operation == "aggregate":
+                # Ejecutar agregación
+                pipeline = mongo_query.pipeline or []
                 
+                # Aplicar opciones de proyección y ordenamiento si existen
+                if mongo_query.projection:
+                    pipeline.append({"$project": mongo_query.projection})
+                if mongo_query.sort:
+                    pipeline.append({"$sort": mongo_query.sort})
+                if mongo_query.limit:
+                    pipeline.append({"$limit": mongo_query.limit})
+                if mongo_query.skip:
+                    pipeline.append({"$skip": mongo_query.skip})
+                
+                cursor = collection.aggregate(pipeline)
+                
+                # Obtener resultados
+                result_list = await cursor.to_list(length=100)
+                result_serializable = loads(dumps(result_list))
+                
+                num_docs = len(result_serializable)
+                if num_docs == 0:
+                    explanation = "La agregación no devolvió ningún documento."
+                else:
+                    explanation = f"La agregación devolvió {num_docs} {'documento' if num_docs == 1 else 'documentos'}."
+                    if mongo_query.projection:
+                        fields = ", ".join(mongo_query.projection.keys())
+                        explanation += f" Campos seleccionados: {fields}."
+                    if mongo_query.sort:
+                        explanation += " Los resultados están ordenados según los criterios especificados."
+                    if mongo_query.limit:
+                        explanation += f" Se limitó la búsqueda a {mongo_query.limit} documentos."
+                
+                return result_serializable, explanation
             elif mongo_query.operation == "findOne":
                 # Ejecutar consulta de búsqueda de un documento
                 document = await collection.find_one(
