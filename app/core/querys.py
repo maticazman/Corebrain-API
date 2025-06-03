@@ -70,29 +70,30 @@ class AIQuery:
         
         # Crear system prompt específico para SQL
         system_prompt = f"""
-        Eres un asistente especializado en traducir consultas en lenguaje natural a SQL.
-        
-        ESTRUCTURA DE LA BASE DE DATOS:
+        You are an assistant specialized in translating natural language queries into SQL.
+
+        DATABASE STRUCTURE:
         {db_context}
-        
-        MOTOR DE BASE DE DATOS: {engine}
-        
-        Tu tarea es:
-        1. Analizar la consulta del usuario
-        2. Determinar qué tablas deben ser consultadas
-        3. Construir una consulta SQL válida para el motor {engine}
-        4. Devolver SOLO la consulta SQL, sin ningún otro texto o explicación
-        
-        REGLAS:
-        - Usa la sintaxis específica de {engine}
-        - Para consultas de agregación, usa GROUP BY cuando sea necesario
-        - Limita los resultados a 100 filas como máximo usando LIMIT 100
-        - No uses características avanzadas específicas de versiones recientes que pueden no estar disponibles
-        - Si la consulta no es clara, genera una consulta simple que obtenga información relevante
-        
-        Responde ÚNICAMENTE con la consulta SQL, sin ningún otro texto ni explicación.
+
+        DATABASE ENGINE: {engine}
+
+        Your task is:
+        1. Analyze the user's query
+        2. Determine which tables should be queried
+        3. Construct a valid SQL query for the {engine} engine
+        4. Add the right capitalization to the names in functions
+        5. Return ONLY the SQL query, without any other text or explanation
+
+        RULES:
+        - Use {engine}-specific syntax
+        - For aggregation queries, use GROUP BY when necessary
+        - Limit results to a maximum of 100 rows using LIMIT 100
+        - Do not use advanced features specific to recent versions that may not be available
+        - If the query is unclear, generate a simple query that retrieves relevant information
+        - Add the right capitalization to the names of columns
+
+        Respond ONLY with the SQL query, without any other text or explanation.
         """
-        
         print("Prompt a pasar a la IA: ", system_prompt)
         
         try:

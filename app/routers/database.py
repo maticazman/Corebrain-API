@@ -302,10 +302,12 @@ async def process_sdk_query(
                 start_time = time.time()
                 result_data, _ = await AIQuery.execute_mongodb_query(mongo_query, db_config)
                 query_time_ms = (time.time() - start_time) * 1000
-                
                 # Crear objeto QueryResult para la explicación
+                if isinstance(result_data, list):
+                    result_data = [{key: str(value) if isinstance(value, ObjectId) else value for key, value in doc.items()} for doc in result_data]
+
                 query_result = QueryResult(
-                    data=result_data,
+                    data = result_data,
                     count=len(result_data) if isinstance(result_data, list) else 1,
                     query_time_ms=int(query_time_ms),
                     has_more=False,
