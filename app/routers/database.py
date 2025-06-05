@@ -219,8 +219,8 @@ async def process_sdk_query(
                 
                 # Crear objeto QueryResult para la explicación
                 query_result = QueryResult(
-                    data=result_data,
-                    count=len(result_data),
+                    data=result_data[0],
+                    count=len(result_data[0]),
                     query_time_ms=int(query_time_ms),
                     has_more=False,
                     metadata={
