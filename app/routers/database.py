@@ -16,6 +16,8 @@ import re
 import json
 import traceback
 import time
+import bson
+from bson import ObjectId, Decimal128
 
 router = APIRouter()
 
@@ -47,6 +49,25 @@ def serialize_model(obj):
                 if not k.startswith("_")}
     else:
         # Para tipos básicos
+        return obj
+
+def convert_bson_types(obj):
+    """
+    Recursively convert BSON types (ObjectId, Decimal128) to JSON-serializable types.
+    """
+    if isinstance(obj, list):
+        return [convert_bson_types(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {k: convert_bson_types(v) for k, v in obj.items()}
+    elif isinstance(obj, ObjectId):
+        return str(obj)
+    elif isinstance(obj, Decimal128):
+        # Convert to float if possible, else str
+        try:
+            return float(obj.to_decimal())
+        except Exception:
+            return str(obj)
+    else:
         return obj
 
 
@@ -302,10 +323,9 @@ async def process_sdk_query(
                 start_time = time.time()
                 result_data, _ = await AIQuery.execute_mongodb_query(mongo_query, db_config)
                 query_time_ms = (time.time() - start_time) * 1000
+                # Convertir ObjectId y Decimal128 a tipos serializables
+                result_data = convert_bson_types(result_data)
                 # Crear objeto QueryResult para la explicación
-                if isinstance(result_data, list):
-                    result_data = [{key: str(value) if isinstance(value, ObjectId) else value for key, value in doc.items()} for doc in result_data]
-
                 query_result = QueryResult(
                     data = result_data,
                     count=len(result_data) if isinstance(result_data, list) else 1,
