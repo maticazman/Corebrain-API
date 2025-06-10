@@ -16,14 +16,14 @@ class AIQuery:
     def __init__(self, query: str, collection_name: str = None, limit: int = 50, 
                  config_id: Optional[str] = None, db_schema: Optional[Dict[str, Any]] = None):
         """
-        Inicializa un objeto AIQuery para procesar consultas en lenguaje natural.
-        
+        Initializes an AIQuery object to process natural language queries.
+
         Args:
-            query: Consulta en lenguaje natural
-            collection_name: Nombre de la colección/tabla a consultar (opcional)
-            limit: Límite de resultados (por defecto 50)
-            config_id: ID de configuración (opcional)
-            db_schema: Esquema de la base de datos (opcional)
+            query: Natural language query
+            collection_name: Name of the collection/table to query (optional)
+            limit: Result limit (default 50)
+            config_id: Configuration ID (optional)
+            db_schema: Database schema (optional)
         """
         self.query = query
         self.collection_name = collection_name
@@ -38,22 +38,22 @@ class AIQuery:
         engine: str
     ) -> str:
         """
-        Genera una consulta SQL a partir de una consulta en lenguaje natural y la información de la base de datos.
-        
+        Generates an SQL query from a natural language query and database information.
+
         Args:
-            query: Consulta en lenguaje natural
-            db_info: Información del esquema de la base de datos
-            engine: Motor de base de datos (sqlite, mysql, postgresql)
-            
+            query: Natural language query
+            db_info: Database schema information
+            engine: Database engine (sqlite, mysql, postgresql)
+
         Returns:
-            Consulta SQL generada
+            Generated SQL query
         """
-        # Preparar el contexto con la información de la base de datos
-        db_context = json.dumps(db_info, indent=2, default=str)  # Usar default=str para manejar tipos especiales
+        # Prepare the context with the information from the database
+        db_context = json.dumps(db_info, indent=2, default=str)  # Use default=str to handle special types
         
-        # Limitar el contexto si es demasiado grande
+        # Limit the context if it is too large
         if len(db_context) > 10000:
-            # Extraer solo las primeras tablas
+            # Extract only the first tables
             tables = list(db_info.get("tables", {}).keys())
             truncated_tables = tables[:5]
             
@@ -68,7 +68,7 @@ class AIQuery:
             db_context = json.dumps(truncated_db_info, indent=2, default=str)
             db_context += f"\n\n... y {len(tables) - 5} tablas más."
         
-        # Crear system prompt específico para SQL
+        # Create specific system prompt for SQL
         system_prompt = f"""
         You are an assistant specialized in translating natural language queries into SQL.
 
@@ -94,34 +94,34 @@ class AIQuery:
 
         Respond ONLY with the SQL query, without any other text or explanation.
         """
-        print("Prompt a pasar a la IA: ", system_prompt)
+        print("Prompt sent to AI: ", system_prompt)
         
         try:
-            # Inicializar cliente de OpenAI
+            # Initialize OpenAI client
             client = openai.AsyncOpenAI(api_key=settings.OPENAI.OPENAI_API_KEY)
             
-            # Enviar solicitud a OpenAI
+            # Submit application to OpenAI
             response = await client.chat.completions.create(
                 model=settings.OPENAI.OPENAI_MODEL,
                 max_tokens=settings.OPENAI.MAX_TOKENS,
-                temperature=0.2,  # Temperatura baja para respuestas más deterministas
+                temperature=0.2,  # Low temperature for more deterministic responses
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": query}
                 ]
             )
             
-            # Extraer la consulta SQL generada
+            # Extract the generated SQL query
             sql_query = response.choices[0].message.content.strip()
             
-            # Limpiar la consulta (eliminar comentarios, etc.)
+            # Clean the query (delete comments, etc.)
             sql_query = AIQuery.clean_sql_query(sql_query)
             
             return sql_query
             
         except Exception as e:
             logger.error(f"Error al generar consulta SQL: {str(e)}")
-            # En caso de error, generar una consulta segura y simple
+            # In case of error, generate a safe and simple query
             safe_table = next(iter(db_info.get("tables", {}).keys()), "users")
             return f"SELECT * FROM {safe_table} LIMIT 10"
 
@@ -129,34 +129,34 @@ class AIQuery:
     @staticmethod
     def clean_sql_query(sql_query: str) -> str:
         """
-        Limpia una consulta SQL eliminando comentarios, backticks y otros elementos innecesarios.
-        
+        Cleans up an SQL query by removing comments, backticks, and other unnecessary elements.
+
         Args:
-            sql_query: Consulta SQL a limpiar
-            
+            sql_query: SQL query to clean
+
         Returns:
-            Consulta SQL limpia
+            Cleaned SQL query
         """
-        # Eliminar bloques de código markdown
+        # Remove markdown code blocks
         if sql_query.startswith('```') and sql_query.endswith('```'):
             sql_query = sql_query[3:-3].strip()
         elif '```' in sql_query:
-            # Extraer contenido entre las primeras comillas de código triple
+            # Extract content between the first triple quotes of code
             match = re.search(r'```(?:sql)?(.*?)```', sql_query, re.DOTALL)
             if match:
                 sql_query = match.group(1).strip()
         
-        # Eliminar especificadores de lenguaje al inicio
+        # Remove language specifiers at the beginning
         if sql_query.lower().startswith('sql'):
             sql_query = sql_query[3:].strip()
         
-        # Eliminar comentarios de una línea
+        # Delete comments from a line
         sql_query = re.sub(r'--.*$', '', sql_query, flags=re.MULTILINE)
         
-        # Eliminar comentarios de múltiples líneas
+        # Delete multi-line comments
         sql_query = re.sub(r'/\*.*?\*/', '', sql_query, flags=re.DOTALL)
         
-        # Eliminar líneas vacías y espacios extras
+        # Remove empty lines and extra spaces
         sql_query = '\n'.join(line.strip() for line in sql_query.split('\n') if line.strip())
         
         return sql_query
@@ -167,14 +167,14 @@ class AIQuery:
         db_config: Dict[str, Any]
     ) -> Tuple[List[Dict[str, Any]], float]:
         """
-        Ejecuta una consulta SQL en la base de datos configurada.
-        
+        Executes an SQL query on the configured database.
+
         Args:
-            sql_query: Consulta SQL a ejecutar
-            db_config: Configuración de la base de datos
-            
+            sql_query: SQL query to execute
+            db_config: Database configuration
+
         Returns:
-            Tupla con (resultado, tiempo_ejecución)
+            Tuple containing (result, execution_time)
         """
         start_time = time.time()
         engine = db_config.get("engine", "").lower()
@@ -188,47 +188,47 @@ class AIQuery:
             elif engine == "postgresql":
                 result_data = await AIQuery.execute_postgresql_query(sql_query, db_config)
             else:
-                raise ValueError(f"Motor SQL no soportado: {engine}")
+                raise ValueError(f"SQL Engine Not Supported: {engine}")
             
-            # Calcular tiempo de ejecución
+            # Calculate execution time
             execution_time = time.time() - start_time
             
-            # Limitar resultados si son demasiados
+            # Limit results if there are too many
             if len(result_data) > 100:
                 result_data = result_data[:100]
             
             return result_data, execution_time
             
         except Exception as e:
-            # Registrar error
-            logger.error(f"Error al ejecutar consulta SQL ({engine}): {str(e)}")
+            # Log error
+            logger.error(f"Error executing SQL query ({engine}): {str(e)}")
             execution_time = time.time() - start_time
             raise
 
     @staticmethod
     async def execute_sqlite_query(sql_query: str, db_config: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Ejecuta una consulta en SQLite."""
+        """Executes a query in SQLite."""
         import sqlite3
         import aiosqlite
         
         database_path = db_config.get("database", "")
         if not database_path:
-            raise ValueError("Ruta de base de datos SQLite no especificada")
+            raise ValueError("SQLite database path not specified")
         
         async with aiosqlite.connect(database_path) as db:
-            # Configurar para obtener resultados como diccionarios
+            # Configure to get results as dictionaries
             db.row_factory = aiosqlite.Row
             
-            # Ejecutar la consulta
+            # Run the query
             cursor = await db.execute(sql_query)
             rows = await cursor.fetchall()
             
-            # Convertir a lista de diccionarios
+            # Convert to dictionary list
             result = []
             for row in rows:
-                # Convertir Row a dict
+                # Convert Row to dict
                 row_dict = {key: row[key] for key in row.keys()}
-                # Serializar valores especiales
+                # Serialize special values
                 for key, value in row_dict.items():
                     if hasattr(value, 'isoformat') and callable(getattr(value, 'isoformat')):
                         row_dict[key] = value.isoformat()
@@ -241,17 +241,17 @@ class AIQuery:
 
     @staticmethod
     async def execute_mysql_query(sql_query: str, db_config: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Ejecuta una consulta en MySQL."""
+        """Execute a query in MySQL."""
         import aiomysql
         
-        # Extraer parámetros de conexión
+        # Extract connection parameters
         host = db_config.get("host", "localhost")
         port = db_config.get("port", 3306)
         user = db_config.get("user", "")
         password = db_config.get("password", "")
         database = db_config.get("database", "")
         
-        # Crear pool de conexiones
+        # Create connection pool
         pool = await aiomysql.create_pool(
             host=host,
             port=port,
@@ -263,14 +263,14 @@ class AIQuery:
         
         async with pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cursor:
-                # Ejecutar la consulta
+                # Run the query
                 await cursor.execute(sql_query)
                 rows = await cursor.fetchall()
                 
-                # Convertir resultados
+                # Convert results
                 result = []
                 for row in rows:
-                    # Convertir valores no serializables (como bytes, datetime, etc.)
+                    # Convert non-serializable values ​​(such as bytes, datetime, etc.)
                     row_dict = {}
                     for key, value in row.items():
                         if isinstance(value, (bytes, bytearray)):
@@ -284,23 +284,23 @@ class AIQuery:
                 
                 return result
         
-        # Cerrar el pool
+        # Close the pool
         pool.close()
         await pool.wait_closed()
 
     @staticmethod
     async def execute_postgresql_query(sql_query: str, db_config: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Ejecuta una consulta en PostgreSQL."""
+        """Execute a query in PostgreSQL."""
         import asyncpg
         
-        # Extraer parámetros de conexión
+        # Extract connection parameters
         host = db_config.get("host", "localhost")
         port = db_config.get("port", 5432)
         user = db_config.get("user", "")
         password = db_config.get("password", "")
         database = db_config.get("database", "")
         
-        # Conectar a la base de datos
+        # Connect to the database
         conn = await asyncpg.connect(
             host=host,
             port=port,
@@ -310,16 +310,16 @@ class AIQuery:
         )
         
         try:
-            # Ejecutar la consulta
+            # Run the query
             rows = await conn.fetch(sql_query)
             
-            # Convertir Record a dict
+            # Convert Record to Dict
             result = []
             for row in rows:
-                # Convertir asyncpg.Record a dict
+                # Convert asyncpg.Record to dict
                 row_dict = dict(row)
                 
-                # Convertir valores no serializables
+                # Convert non-serializable values
                 for key, value in row_dict.items():
                     if hasattr(value, 'isoformat'):  # datetime, date, time
                         row_dict[key] = value.isoformat()
@@ -333,52 +333,52 @@ class AIQuery:
             return result
             
         finally:
-            # Cerrar la conexión
+            # Close the connection
             await conn.close()
 
     @staticmethod
     async def execute_mongodb_query(mongo_query, db_config):
         """
-        Ejecuta una consulta MongoDB y devuelve los resultados.
-        
+        Executes a MongoDB query and returns the results.
+
         Args:
-            mongo_query (MongoDBQuery): La consulta MongoDB a ejecutar
-            db_config (dict): Configuración de la base de datos
-            
+            mongo_query (MongoDBQuery): The MongoDB query to execute
+            db_config (dict): Database configuration
+
         Returns:
-            tuple: (resultado, explicación)
+            tuple: (result, explanation)
         """
         import motor.motor_asyncio
         from bson.json_util import dumps, loads
         
         try:
-            # Obtener parámetros de conexión
+            # Get connection parameters
             host = db_config.get("host", "localhost")
             port = db_config.get("port", 27017)
             user = db_config.get("user", "")
             password = db_config.get("password", "")
             database = db_config.get("database", "")
             
-            # Construir la URL de conexión
+            # Build the connection URL
             if user and password:
                 connection_string = f"mongodb://{user}:{password}@{host}:{port}/{database}"
             else:
                 connection_string = f"mongodb://{host}:{port}/{database}"
             
-            # Conectar a MongoDB
+            # Connect to MongoDB
             client = motor.motor_asyncio.AsyncIOMotorClient(connection_string)
             db = client[database]
             collection = db[mongo_query.collection]
             
-            # Determinar la operación a realizar
+            # Determine the operation to be performed
             if mongo_query.operation == "find":
-                # Ejecutar consulta de búsqueda
+                # Run search query
                 cursor = collection.find(
                     mongo_query.filter or {},
                     mongo_query.projection or None
                 )
                 
-                # Aplicar opciones si existen
+                # Apply options if they exist
                 if mongo_query.sort:
                     cursor = cursor.sort(mongo_query.sort)
                 if mongo_query.limit:
@@ -386,34 +386,34 @@ class AIQuery:
                 if mongo_query.skip:
                     cursor = cursor.skip(mongo_query.skip)
                 
-                # Obtener resultados
-                result_list = await cursor.to_list(length=100)  # Limitar a 100 documentos por defecto
+                # Get results
+                result_list = await cursor.to_list(length=100)  # Limit to 100 documents by default
                 
-                # Convertir ObjectId a string para serialización JSON
+                # Convert ObjectId to string for JSON serialization
                 result_serializable = loads(dumps(result_list))
                 
-                # Generar explicación
+                # Generate explanation
                 num_docs = len(result_serializable)
                 if num_docs == 0:
-                    explanation = "La consulta no devolvió ningún documento."
+                    explanation = "The query did not return any documents."
                 else:
-                    explanation = f"La consulta devolvió {num_docs} {'documento' if num_docs == 1 else 'documentos'}."
+                    explanation = f"The query returned {num_docs} {'document' if num_docs == 1 else 'documents'}."
                     
-                    # Añadir información adicional
+                    # Add additional information
                     if mongo_query.projection:
                         fields = ", ".join(mongo_query.projection.keys())
-                        explanation += f" Campos seleccionados: {fields}."
+                        explanation += f" Selected fields: {fields}."
                     if mongo_query.sort:
-                        explanation += " Los resultados están ordenados según los criterios especificados."
+                        explanation += " The results are sorted according to the specified criteria."
                     if mongo_query.limit:
-                        explanation += f" Se limitó la búsqueda a {mongo_query.limit} documentos."
+                        explanation += f" The search was limited to {mongo_query.limit} documents."
                 
                 return result_serializable, explanation
             elif mongo_query.operation == "aggregate":
-                # Ejecutar agregación
+                # Run aggregation
                 pipeline = mongo_query.pipeline or []
                 
-                # Aplicar opciones de proyección y ordenamiento si existen
+                # Apply projection and sorting options if they exist
                 if mongo_query.projection:
                     pipeline.append({"$project": mongo_query.projection})
                 if mongo_query.sort:
@@ -425,71 +425,71 @@ class AIQuery:
                 
                 cursor = collection.aggregate(pipeline)
                 
-                # Obtener resultados
+                # Get results
                 result_list = await cursor.to_list(length=100)
                 result_serializable = loads(dumps(result_list))
                 
                 num_docs = len(result_serializable)
                 if num_docs == 0:
-                    explanation = "La agregación no devolvió ningún documento."
+                    explanation = "The aggregation did not return any documents."
                 else:
-                    explanation = f"La agregación devolvió {num_docs} {'documento' if num_docs == 1 else 'documentos'}."
+                    explanation = f"The aggregation returned {num_docs} {'document' if num_docs == 1 else 'documents'}."
                     if mongo_query.projection:
                         fields = ", ".join(mongo_query.projection.keys())
-                        explanation += f" Campos seleccionados: {fields}."
+                        explanation += f" Selected fields: {fields}."
                     if mongo_query.sort:
-                        explanation += " Los resultados están ordenados según los criterios especificados."
+                        explanation += " The results are sorted according to the specified criteria."
                     if mongo_query.limit:
-                        explanation += f" Se limitó la búsqueda a {mongo_query.limit} documentos."
+                        explanation += f" The search was limited to {mongo_query.limit} documents."
                 
                 return result_serializable, explanation
             elif mongo_query.operation == "findOne":
-                # Ejecutar consulta de búsqueda de un documento
+                # Run a search query on a document
                 document = await collection.find_one(
                     mongo_query.filter or {},
                     mongo_query.projection or None
                 )
                 
-                # Convertir ObjectId a string para serialización JSON
+                # Convert ObjectId to string for JSON serialization
                 result_serializable = loads(dumps(document))
                 
-                # Generar explicación
+                # Generate explanation
                 if result_serializable:
-                    explanation = "Se encontró el documento solicitado."
+                    explanation = "The requested document was found."
                     if mongo_query.projection:
                         fields = ", ".join(mongo_query.projection.keys())
-                        explanation += f" Campos seleccionados: {fields}."
+                        explanation += f" Selected fields: {fields}."
                 else:
-                    explanation = "No se encontró ningún documento que coincida con los criterios de búsqueda."
+                    explanation = "No documents were found matching the search criteria."
                 
                 return result_serializable, explanation
                 
             elif mongo_query.operation == "insertOne":
-                # Ejecutar inserción de un documento
+                # Execute insertion of a document
                 result = await collection.insert_one(mongo_query.document)
                 
-                # Generar explicación
-                explanation = f"Se ha insertado un nuevo documento con ID: {str(result.inserted_id)}."
+                # Generate explanation
+                explanation = f"A new document has been inserted with ID: {str(result.inserted_id)}."
                 
                 return {"insertedId": str(result.inserted_id)}, explanation
                 
             elif mongo_query.operation == "updateOne":
-                # Ejecutar actualización de un documento
+                # Run a document update
                 result = await collection.update_one(
                     mongo_query.filter or {},
                     mongo_query.update
                 )
                 
-                # Generar explicación
+                # Run a document update
                 matched = result.matched_count
                 modified = result.modified_count
                 
                 if matched == 0:
-                    explanation = "No se encontró ningún documento que coincida con los criterios de búsqueda para actualizar."
+                    explanation = "No documents were found matching the search criteria to update."
                 elif modified == 0:
-                    explanation = "Se encontró un documento pero no se realizaron cambios (los valores son idénticos a los existentes)."
+                    explanation = "A document was found but no changes were made (the values are identical to the existing ones)."
                 else:
-                    explanation = "Se actualizó correctamente el documento."
+                    explanation = "The document has been successfully updated."
                 
                 return {
                     "matchedCount": matched,
@@ -497,35 +497,35 @@ class AIQuery:
                 }, explanation
                 
             elif mongo_query.operation == "deleteOne":
-                # Ejecutar eliminación de un documento
+                # Execute deletion of a document
                 result = await collection.delete_one(mongo_query.filter or {})
                 
-                # Generar explicación
+                # Generate explanation
                 deleted = result.deleted_count
                 
                 if deleted == 0:
-                    explanation = "No se encontró ningún documento que coincida con los criterios para eliminar."
+                    explanation = "No documents were found that matched the criteria for deletion."
                 else:
-                    explanation = "Se eliminó correctamente el documento."
+                    explanation = "The document has been successfully deleted."
                 
                 return {"deletedCount": deleted}, explanation
                 
             else:
-                # Operación no soportada
-                raise ValueError(f"Operación MongoDB no soportada: {mongo_query.operation}")
+                # Unsupported operation
+                raise ValueError(f"MongoDB operation not supported: {mongo_query.operation}")
         
         except Exception as e:
-            # Proporcionar una explicación del error
+            # Provide an explanation of the error
             error_message = str(e)
-            explanation = f"Error al ejecutar la consulta MongoDB: {error_message}"
+            explanation = f"Error executing MongoDB query: {error_message}"
             
-            # Sugerir soluciones según el tipo de error
+            # Suggest solutions based on the type of error
             if "Authentication failed" in error_message:
-                explanation += " Las credenciales de acceso son incorrectas."
+                explanation += " The login credentials are incorrect."
             elif "not authorized" in error_message:
-                explanation += " El usuario no tiene permisos suficientes para esta operación."
+                explanation += " The user does not have sufficient permissions for this operation."
             elif "No such collection" in error_message:
-                explanation += " La colección especificada no existe en la base de datos."
+                explanation += " The specified collection does not exist in the database."
             
             raise ValueError(explanation)
 
@@ -537,124 +537,123 @@ class AIQuery:
         db_connection = None
     ) -> MongoDBQuery:
         """
-        Genera una consulta MongoDB a partir de una consulta en lenguaje natural.
-        Adaptado para funcionar con bases de datos de clientes sin conocimiento previo de colecciones.
-        
+       Generates a MongoDB query from a natural language query.Designed to work with client databases without prior knowledge of collections.
+
         Args:
-            query: Consulta en lenguaje natural
-            db_info: Información del esquema de la base de datos
-            collection_name: Nombre de la colección a consultar (opcional)
-            db_connection: Conexión a la base de datos para exploración adicional (opcional)
-            
+            query: Natural language query
+            db_info: Database schema information
+            collection_name: Name of the collection to query (optional)
+            db_connection: Database connection for further exploration (optional)
+
         Returns:
-            Objeto MongoDBQuery con la consulta generada
+            MongoDBQuery object with the generated query
         """
-        # Preparar el contexto con la información de la base de datos
+        # Prepare the context with the information from the database
         db_context = json.dumps(db_info, indent=2, default=str)
         
-        # Obtener colecciones disponibles
+        # Get available collections
         available_collections = []
         if "tables" in db_info:
             available_collections = list(db_info.get("tables", {}).keys())
         elif "collections" in db_info:
             available_collections = list(db_info.get("collections", {}).keys())
         
-        # Si se proporcionó una colección específica, usarla
+        # If a specific collection was provided, use it
         if collection_name:
             selected_collection = collection_name
         else:
-            # Intentar determinar la mejor colección basada en la consulta
+            # Attempt to determine the best collection based on the query
             selected_collection = Utils.determine_best_collection(query, available_collections, db_connection)
             logger.info(f"Colección seleccionada automáticamente: {selected_collection}")
         
-        # Crear system prompt específico para la colección seleccionada
+        # Create system prompt specific to the selected collectionCreate system prompt specific to the selected collection
         collection_info = ""
         if selected_collection and selected_collection in db_info.get("tables", {}):
-            # Incluir información específica sobre la colección seleccionada
+            # Include specific information about the selected collection
             try:
                 collection_data = db_info["tables"][selected_collection]
-                collection_info = f"\nINFORMACIÓN DE LA COLECCIÓN SELECCIONADA ({selected_collection}):\n"
+                collection_info = f"\nSELECTED COLLECTION INFORMATION ({selected_collection}):\n"
                 
-                # Incluir campos/estructura
+                # Include fields/structure
                 if "columns" in collection_data or "fields" in collection_data:
                     fields = collection_data.get("columns", collection_data.get("fields", []))
-                    collection_info += f"Campos: {json.dumps([f.get('name') for f in fields], default=str)}\n"
+                    collection_info += f"Fields: {json.dumps([f.get('name') for f in fields], default=str)}\n"
                 
-                # Incluir muestra de documentos si está disponible
+                # Include sample documents if available
                 if "sample_data" in collection_data and collection_data["sample_data"]:
-                    collection_info += f"Muestra de documentos: {json.dumps(collection_data['sample_data'][:2], default=str)}\n"
+                    collection_info += f"Sample documents: {json.dumps(collection_data['sample_data'][:2], default=str)}\n"
                     
             except Exception as e:
-                logger.warning(f"Error al preparar información de colección: {str(e)}")
+                logger.warning(f"Error preparing collection information: {str(e)}")
         
         # Crear system prompt para consulta MongoDB
         system_prompt = f"""
-        Eres un asistente especializado en traducir consultas en lenguaje natural a operaciones MongoDB.
-        
-        ESTRUCTURA DE LA BASE DE DATOS:
+       You are an assistant specialized in translating natural language queries into MongoDB operations.
+
+        DATABASE STRUCTURE:
         {db_context}
-        
+
         {collection_info}
-        
-        Tu tarea es:
-        1. Analizar cuidadosamente la consulta del usuario
-        2. Utilizar la colección '{selected_collection}' para esta consulta
-        3. Construir la consulta apropiada (find o aggregate)
-        4. Devolver la consulta como un objeto JSON con el siguiente formato:
-        
-        Para búsquedas simples:
+
+        Your task is:  
+        1. Carefully analyze the user's query
+        2. Use the '{selected_collection}' collection for this query
+        3. Construct the appropriate query (find or aggregate)
+        4. Return the query as a JSON object with the following format:
+
+        For simple searches:
         {{
         "collection": "{selected_collection}",
         "operation": "find",
-        "query": {{ /* filtros */ }},
-        "projection": {{ /* campos a incluir/excluir */ }},
-        "sort": {{ /* ordenamiento */ }},
+        "query": {{ /* filters */ }},
+        "projection": {{ /* fields to include/exclude */ }},
+        "sort": {{ /* ordering */ }},
         "limit": 10
         }}
-        
-        Para agregaciones:
+
+        For aggregations:
         {{
         "collection": "{selected_collection}",
         "operation": "aggregate",
         "pipeline": [
-            {{ /* etapa 1 */ }},
-            {{ /* etapa 2 */ }}
-        ]
+        {{ /* step 1 */ }},
+        {{ /* step 2 */ }}
+        ]   
         }}
-        
-        IMPORTANTE: Utiliza exactamente la colección "{selected_collection}" en tu respuesta.
-        
-        Responde ÚNICAMENTE con el objeto JSON, sin ningún otro texto.
+
+        IMPORTANT: Use the exact "{selected_collection}" collection in your response.
+
+        Respond ONLY with the JSON object, without any other text.
         """
         
         try:
-            # Inicializar cliente de OpenAI
+            # Initialize OpenAI client
             client = openai.AsyncOpenAI(api_key=settings.OPENAI.OPENAI_API_KEY)
             
-            # Enviar solicitud a OpenAI
+            # Submit application to OpenAI
             response = await client.chat.completions.create(
                 model=settings.OPENAI.OPENAI_MODEL,
                 max_tokens=settings.OPENAI.MAX_TOKENS,
-                temperature=0.2,  # Temperatura baja para respuestas más deterministas
+                temperature=0.2,  # Low temperature for more deterministic responses
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": query}
                 ]
             )
             
-            # Extraer y procesar respuesta JSON
+            # Extract and process JSON response
             ai_response = response.choices[0].message.content
             json_text = AIQuery.clean_json_response(ai_response)
             
-            # Parsear JSON
+            # Parse JSON
             query_data = json.loads(json_text)
             
-            # Verificar que se está usando la colección seleccionada
+            # Verify that the selected collection is being used
             if query_data.get("collection") != selected_collection:
-                logger.warning(f"La IA seleccionó una colección diferente: {query_data.get('collection')}. Forzando uso de {selected_collection}")
+                logger.warning(f"The AI selected a different collection: {query_data.get('collection')}. Forcing use of {selected_collection}")
                 query_data["collection"] = selected_collection
             
-            # Crear objeto MongoDBQuery
+            # Create MongoDBQuery object
             mongo_query = MongoDBQuery(
                 collection=query_data["collection"],
                 operation=query_data.get("operation", "find"),
@@ -666,28 +665,28 @@ class AIQuery:
                 skip=query_data.get("skip", 0)
             )
             
-            # Registrar la consulta generada
-            logger.info(f"Consulta MongoDB generada para colección {mongo_query.collection}: {json.dumps(mongo_query.dict() if hasattr(mongo_query, 'dict') else vars(mongo_query), default=str)}")
+            # Record the generated query
+            logger.info(f"Generated MongoDB query for collection {mongo_query.collection}: {json.dumps(mongo_query.dict() if hasattr(mongo_query, 'dict') else vars(mongo_query), default=str)}")
             
             return mongo_query
             
         except Exception as e:
-            logger.error(f"Error al generar consulta MongoDB: {str(e)}")
+            logger.error(f"Error generating MongoDB query: {str(e)}")
             
-            # Realizar diagnóstico de la conexión si está disponible
+            # Perform connection diagnostics if available
             if db_connection:
                 try:
                     debug_result = await Diagnostic.debug_mongodb_connection(db_connection, collection_name)
-                    logger.info(f"Diagnóstico MongoDB: {json.dumps(debug_result, default=str)}")
+                    logger.info(f"MongoDB Diagnostics: {json.dumps(debug_result, default=str)}")
                     
-                    # Usar información del diagnóstico para una mejor selección de fallback
+                    # Using diagnostic information for better fallback selection
                     if debug_result.get("available_collections"):
                         available_collections = debug_result["available_collections"]
                 except Exception as debug_error:
-                    logger.error(f"Error al realizar diagnóstico: {str(debug_error)}")
+                    logger.error(f"Error when performing diagnosis: {str(debug_error)}")
             
             
-            # En caso de error, generar una consulta segura y simple con la colección seleccionada
+            # In case of error, generate a safe and simple query with the selected collection
             return MongoDBQuery(
                 collection=selected_collection or (available_collections[0] if available_collections else "users"),
                 operation="find",
@@ -698,19 +697,19 @@ class AIQuery:
             
     @staticmethod
     def clean_json_response(response_text: str) -> str:
-        """Limpia y extrae el JSON de la respuesta del modelo."""
+        """Cleans and extracts the JSON from the model response."""
         json_text = response_text.strip()
         
-        # Eliminar bloques de código markdown
+        # Remove markdown code blocks
         if json_text.startswith('```') and json_text.endswith('```'):
             json_text = json_text[3:-3].strip()
         elif '```' in json_text:
-            # Extraer contenido entre las primeras comillas de código triple
+            # Extract content between the first triple quotes of code
             match = re.search(r'```(?:json)?(.*?)```', json_text, re.DOTALL)
             if match:
                 json_text = match.group(1).strip()
                 
-        # Eliminar prefijo de lenguaje
+        # Remove language prefix
         if json_text.startswith('json'):
             json_text = json_text[4:].strip()
         
@@ -723,23 +722,23 @@ class AIQuery:
         result: QueryResult
     ) -> str:
         """
-        Genera una explicación en lenguaje natural de los resultados de una consulta MongoDB.
-        
+       Generates a natural language explanation of the results of a MongoDB query.
+
         Args:
-            query: Consulta original en lenguaje natural
-            mongo_query: Consulta MongoDB generada (objeto o diccionario)
-            result: Resultado de la consulta
-            
+            query: Original natural language query
+            mongo_query: Generated MongoDB query (object or dictionary)
+            result: Query result
+
         Returns:
-            Explicación en lenguaje natural
+            Natural language explanation
         """
-        # Convertir mongo_query a diccionario si es un objeto
+        # Convert mongo_query to dictionary if it is an object
         if hasattr(mongo_query, "model_dump"):
             mongo_query_dict = mongo_query.model_dump()
         elif hasattr(mongo_query, "dict"):
             mongo_query_dict = mongo_query.dict()
         elif not isinstance(mongo_query, dict):
-            # Intentar extraer atributos comunes
+            # Trying to extract common attributes
             mongo_query_dict = {
                 "collection": getattr(mongo_query, "collection", ""),
                 "operation": getattr(mongo_query, "operation", "find"),
@@ -753,28 +752,28 @@ class AIQuery:
         else:
             mongo_query_dict = mongo_query
         
-        # Limitar resultado para el prompt
+        # Limit output for the prompt
         result_sample = result.data[:5] if isinstance(result.data, list) else [result.data]
         
-        # Extraer información relevante de la consulta
+        # Extract relevant information from the query
         collection = mongo_query_dict.get("collection", "")
         operation = mongo_query_dict.get("operation", "find")
         filter_criteria = mongo_query_dict.get("filter", {}) or mongo_query_dict.get("query", {})
         fields = list(mongo_query_dict.get("projection", {}).keys()) if mongo_query_dict.get("projection") else []
         pipeline = mongo_query_dict.get("pipeline", [])
         
-        # Analizar la estructura de los resultados
+        # Analyze the structure of the results
         fields_in_results = []
         if result.count > 0 and isinstance(result_sample[0], dict):
             fields_in_results = list(result_sample[0].keys())
         
-        # Determinar el tipo de consulta
+        # Determine the type of query
         query_type = operation
         is_aggregation = operation == "aggregate" or (isinstance(pipeline, list) and len(pipeline) > 0)
         has_filter = bool(filter_criteria)
         has_projection = bool(fields)
         
-        # Crear resumen para el contexto
+        # Create summary for context
         summary = {
             "query_type": query_type,
             "collection": collection,
@@ -787,7 +786,7 @@ class AIQuery:
             "fields_in_results": fields_in_results
         }
         
-        # Añadir información específica según el tipo de operación
+        # Add specific information according to the type of operation
         if operation == "find" or operation == "findOne":
             summary["filter_criteria"] = filter_criteria
             summary["sort"] = mongo_query_dict.get("sort", {})
@@ -798,7 +797,7 @@ class AIQuery:
         elif operation in ["insertOne", "updateOne", "deleteOne"]:
             summary["affected_documents"] = result.count
         
-        # Preparar contexto para OpenAI
+        # Preparing context for OpenAI
         context = {
             "original_query": query,
             "mongodb_query": mongo_query_dict,
@@ -811,7 +810,7 @@ class AIQuery:
         try:
             query_language = detect(query)
         except:
-            query_language = "es"  # Valor predeterminado si no se puede detectar
+            query_language = "es"  # Default value if cannot be detected
 
         query_language = detect(query)
         context["detected_language"] = query_language
@@ -820,85 +819,86 @@ class AIQuery:
                 
         # Generar prompt para OpenAI
         system_prompt = f"""
-        Eres un asistente especializado en explicar resultados de consultas MongoDB.
-        Tu objetivo es proporcionar explicaciones claras y naturales de los resultados obtenidos,
-        evitando tecnicismos innecesarios pero manteniendo la precisión de la información.
-        
-        IMPORTANTE: La consulta original está en {context["detected_language"]}. 
-        TU RESPUESTA DEBE ESTAR EXCLUSIVAMENTE EN EL MISMO IDIOMA QUE LA CONSULTA ORIGINAL.
-        
-        Directrices específicas:
-        1. Comienza con un resumen conciso de los resultados (cuántos documentos se encontraron)
-        2. Describe el tipo de consulta realizada (búsqueda, filtrado, agregación, etc.) sin usar terminología técnica de MongoDB
-        3. Comenta los hallazgos más importantes o patrones identificados en los datos
-        4. Destaca información relevante sobre los documentos mostrados
-        5. La explicación debe ser comprensible para personas sin conocimientos técnicos
-        6. Usa un lenguaje accesible pero preciso
-        7. NO menciones la sintaxis MongoDB ni términos técnicos como "$match", "$group", etc.
-        8. Prioriza la relevancia para el usuario sobre los detalles técnicos
-        
-        Formato deseado:
-        - Empezar con un resumen directo y claro
-        - Continuar con 1-3 observaciones importantes sobre los datos
-        - Si es relevante, terminar con una conclusión breve
-        - Mantener la explicación en 100-150 palabras como máximo
-        - Devuelve la explicación en el mismo lenguaje que la pregunta "{query}"
+        You are an assistant specialized in explaining MongoDB query results.
+        Your goal is to provide clear and natural explanations of the results obtained,
+    	avoiding unnecessary technical jargon while maintaining the accuracy of the information.
+
+        IMPORTANT: The original query is in {context["detected_language"]}.
+        YOUR ANSWER MUST BE IN THE SAME LANGUAGE AS THE ORIGINAL QUERY.
+
+        Specific Guidelines:
+        1. Start with a concise summary of the results (how many documents were found)
+        2. Describe the type of query performed (search, filtering, aggregation, etc.) without using technical MongoDB terminology
+        3. Discuss the most important findings or patterns identified in the data
+        4. Highlight relevant information about the documents displayed
+        5. The explanation should be understandable to non-technical users
+        6. Use accessible but precise language
+        7. DO NOT mention MongoDB syntax or technical terms such as "$match", "$group", etc.
+        8. Prioritize relevance to the user over technical details
+
+        Desired Format:
+        - Start with a direct and clear summary
+        - Continue with 1-3 important observations about the data
+        - If relevant, end with a brief conclusion
+        - Keep the explanation to 100-150 words maximum
+        - Return the explanation in the same language as the "{query}" question
+
         """
         
         try:
-            # Inicializar cliente OpenAI
+            # Initialize OpenAI client
             client = openai.AsyncOpenAI(api_key=settings.OPENAI.OPENAI_API_KEY)
             
-            # Enviar solicitud a OpenAI
+            # Submit application to OpenAI
             response = await client.chat.completions.create(
                 model=settings.OPENAI.OPENAI_MODEL,
                 max_tokens=settings.OPENAI.MAX_TOKENS,
-                temperature=0.7,  # Un poco más de creatividad para la explicación
+                temperature=0.7,  #A little more creativity for the explanation
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Explica los resultados de esta consulta MOngoDB en {context['detected_language']}:\n{context_json}"}
+                    {"role": "user", "content": f"Explain the results of this MOngoDB query in {context['detected_language']}:\n{context_json}"}
                 ]
             )
             
-            # Extraer explicación
+            # Extract explanation
             explanation = response.choices[0].message.content
             
             return explanation
         
         except Exception as e:
-            # En caso de error, generar explicación básica
+            # In case of error, generate basic explanation
             logger.error(f"Error al generar explicación MongoDB: {str(e)}")
             
-            # Crear una explicación sencilla basada en los datos disponibles
+            # Create a simple explanation based on the available data
             if result.count == 0:
-                return f"No se encontraron documentos en la colección {collection} que coincidan con tu consulta."
+                return f"No documents were found in the collection {collection} that match your query."
             else:
-                explanation = f"Se encontraron {result.count} documentos en la colección {collection}."
+                explanation = f"{result.count} documents were found in the {collection} collection."
                 
-                # Añadir información sobre el tipo de operación
+                # Add information about the type of operation
                 if operation == "findOne":
-                    explanation = f"Se encontró el documento solicitado en la colección {collection}."
+                    explanation = f"The requested document was found in the {collection} collection."
                 elif operation == "aggregate":
-                    explanation = f"La agregación en la colección {collection} devolvió {result.count} resultados."
+                    explanation = f"Aggregation on collection {collection} returned {result.count} results."
                 elif operation == "insertOne":
-                    explanation = f"Se ha insertado correctamente un nuevo documento en la colección {collection}."
+                    explanation = f"A new document has been successfully inserted into the {collection} collection."
                 elif operation == "updateOne":
-                    explanation = f"Se ha actualizado correctamente un documento en la colección {collection}."
+                    explanation = f"A document in the {collection} collection has been successfully updated."
                 elif operation == "deleteOne":
-                    explanation = f"Se ha eliminado correctamente un documento de la colección {collection}."
+                    explanation = f"A document has been successfully deleted from the {collection} collection."
                 
-                # Añadir información sobre campos si están disponibles
+                # Add information about fields if available
                 if fields_in_results:
-                    sample_fields = fields_in_results[:5]  # Limitar a 5 campos para no saturar la explicación
-                    explanation += f" Los campos presentes en los resultados incluyen: {', '.join(sample_fields)}"
+                    sample_fields = fields_in_results[:5]  # Limit to 5 fields to avoid cluttering the explanation.
+                    explanation += f" Fields present in the results include: {', '.join(sample_fields)}"
                     if len(fields_in_results) > 5:
-                        explanation += f" y {len(fields_in_results) - 5} más."
+                        explanation += f" and {len(fields_in_results) - 5} more."
                     else:
                         explanation += "."
                 
-                # Añadir información sobre el tiempo de ejecución
+                # Add runtime information
                 if result.query_time_ms > 0:
-                    explanation += f" La consulta se ejecutó en {result.query_time_ms:.1f} ms."
+                    explanation += f" The query was executed in {result.query_time_ms:.1f} ms."
                     
                 return explanation
     
@@ -909,34 +909,34 @@ class AIQuery:
         result: QueryResult
     ) -> str:
         """
-        Genera una explicación en lenguaje natural de los resultados de una consulta SQL.
-        
+       Generates a natural language explanation of the results of an SQL query.
+
         Args:
-            query: Consulta original en lenguaje natural
-            sql_query: Consulta SQL ejecutada
-            result: Resultado de la consulta
-            
+            query: Original natural language query
+            sql_query: Executed SQL query
+            result: Query result
+
         Returns:
-            Explicación en lenguaje natural
+            Natural language explanation
         """
-        # Comprobar si hay resultados
+        # Check for results
         if result.count == 0:
-            return "No se encontraron registros que coincidan con tu consulta."
+            return "No records were found that match your query."
         
-        # Limitar resultado para el prompt
+        # Limit output for the prompt
         result_sample = result.data[:5]
         
-        # Analizar la estructura de los resultados para una mejor explicación
+        # Analyze the structure of the results for a better explanation
         column_names = []
         if result.count > 0 and isinstance(result.data[0], dict):
             column_names = list(result.data[0].keys())
         
-        # Analizar la consulta SQL para extraer información relevante
+        # Analyze the SQL query to extract relevant information
         sql_lower = sql_query.lower()
         selected_tables = []
         join_tables = []
         
-        # Detectar tablas en la consulta
+        # Detect tables in the query
         from_pattern = r'from\s+([a-zA-Z0-9_\.]+)'
         join_pattern = r'join\s+([a-zA-Z0-9_\.]+)'
         
