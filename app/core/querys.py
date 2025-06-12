@@ -586,7 +586,7 @@ class AIQuery:
             except Exception as e:
                 logger.warning(f"Error preparing collection information: {str(e)}")
         
-        # Crear system prompt para consulta MongoDB
+        # Create system prompt for MongoDB query
         system_prompt = f"""
        You are an assistant specialized in translating natural language queries into MongoDB operations.
 
@@ -595,6 +595,8 @@ class AIQuery:
 
         {collection_info}
 
+        IMPORTANT: If the user requests a field that is within an object (for example, 'customer.name'), you must use the dot notation in the filter, for example: {{"customer.name": "John"}} to search for documents where the 'customer' object has 'name' equal to 'John'.
+        IMPORTANT: If the user requests a field that is within an array of objects (for example, 'items.name'), you must use the dot notation in the filter, for example: {{"items.name": "notepad"}} to search for documents where any object in the 'items' array has 'name' equal to 'notepad'.
         Your task is:  
         1. Carefully analyze the user's query
         2. Use the '{selected_collection}' collection for this query
@@ -622,10 +624,9 @@ class AIQuery:
         }}
 
         IMPORTANT: Use the exact "{selected_collection}" collection in your response.
-
         Respond ONLY with the JSON object, without any other text.
         """
-        
+        print(system_prompt)
         try:
             # Initialize OpenAI client
             client = openai.AsyncOpenAI(api_key=settings.OPENAI.OPENAI_API_KEY)
